@@ -22,7 +22,7 @@
  * SOFTWARE. 
  */
  
-package doc
+package oxyde
 
 import (
     "errors"

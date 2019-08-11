@@ -2,48 +2,47 @@
  * MIT License
  *
  * Copyright (c) 2017-2019 Dariusz Depta Engos Software
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE. 
+ * SOFTWARE.
  */
- 
-package doc
+
+package oxyde
 
 import (
     "errors"
     "fmt"
-    "github.com/EngosSoftware/oxyde/common"
     "reflect"
     "strings"
 )
 
 const (
-    CollectNone = iota
-    CollectDescription
-    CollectExamples
-    CollectAll
+    CollectNone        = iota // Collect no documentation data.
+    CollectDescription        // Collect endpoint description.
+    CollectExamples           // Collect an example of endpoint usage.
+    CollectAll                // Collect endpoint description and usage example.
 )
 
 const (
-    AccessGranted = iota
-    AccessDenied
-    AccessUnknown
-    AccessError
+    AccessGranted = iota // Access to endpoint is granted.
+    AccessDenied         // Access to endpoint is denied.
+    AccessUnknown        // No info about endpoint access rights.
+    AccessError          // Error occurred during collecting access rights.
 )
 
 type RoleKey struct {
@@ -52,7 +51,7 @@ type RoleKey struct {
     roleName string
 }
 
-type Context struct {
+type DocumentContext struct {
     mode               int             // Documentation collecting data mode.
     exampleSummary     string          // Summary for the next collected example.
     exampleDescription string          // Detailed description for the next collected example.
@@ -63,30 +62,30 @@ type Context struct {
     roles              map[RoleKey]int // Map of access roles tested for endpoints.
 }
 
-func CreateDocContext() *Context {
-    return &Context{
+func CreateDocumentContext() *DocumentContext {
+    return &DocumentContext{
         mode:      CollectNone,
         endpoint:  nil,
         endpoints: make([]Endpoint, 0),
         roles:     make(map[RoleKey]int)}
 }
 
-func (dc *Context) ClearDocumentation() {
+func (dc *DocumentContext) ClearDocumentation() {
     dc.mode = CollectNone
     dc.endpoint = nil
     dc.endpoints = make([]Endpoint, 0)
     dc.roles = make(map[RoleKey]int)
 }
 
-func (dc *Context) PublishDocumentation() {
+func (dc *DocumentContext) PublishDocumentation() {
     for _, endpoint := range dc.endpoints {
         PrintEndpoint(endpoint)
     }
 }
 
-func (dc *Context) NewEndpointDocumentation(id string, tag string, summary string) {
+func (dc *DocumentContext) NewEndpointDocumentation(id string, tag string, summary string) {
     if id == "" {
-        id = common.GenerateId()
+        id = GenerateId()
     }
     dc.endpoint = &Endpoint{
         Id:      id,
@@ -94,19 +93,19 @@ func (dc *Context) NewEndpointDocumentation(id string, tag string, summary strin
     dc.endpoint.AddTag(tag)
 }
 
-func (dc *Context) GetEndpoint() *Endpoint {
+func (dc *DocumentContext) GetEndpoint() *Endpoint {
     return dc.endpoint
 }
 
-func (dc *Context) CollectDescription() {
+func (dc *DocumentContext) CollectDescription() {
     dc.mode = CollectDescription
 }
 
-func (dc *Context) CollectDescriptionMode() bool {
+func (dc *DocumentContext) CollectDescriptionMode() bool {
     return dc.mode == CollectDescription || dc.mode == CollectAll
 }
 
-func (dc *Context) CollectExamples(exampleSummary string, exampleDescription string) {
+func (dc *DocumentContext) CollectExamples(exampleSummary string, exampleDescription string) {
     exampleSummary = strings.TrimSpace(exampleSummary)
     exampleDescription = strings.TrimSpace(exampleDescription)
     if exampleSummary != "" || exampleDescription != "" {
@@ -116,30 +115,30 @@ func (dc *Context) CollectExamples(exampleSummary string, exampleDescription str
     }
 }
 
-func (dc *Context) CollectRole(roleName string) {
+func (dc *DocumentContext) CollectRole(roleName string) {
     dc.roleName = roleName
 }
 
-func (dc *Context) CollectExamplesMode() bool {
+func (dc *DocumentContext) CollectExamplesMode() bool {
     return dc.mode == CollectExamples || dc.mode == CollectAll
 }
 
-func (dc *Context) CollectAll(exampleSummary string) {
+func (dc *DocumentContext) CollectAll(exampleSummary string) {
     dc.mode = CollectAll
     dc.exampleSummary = exampleSummary
 }
 
-func (dc *Context) StopCollecting() {
+func (dc *DocumentContext) StopCollecting() {
     dc.mode = CollectNone
     dc.exampleSummary = ""
     dc.roleName = ""
 }
 
-func (dc *Context) SetRolesOrder(roleOrder []string) {
+func (dc *DocumentContext) SetRolesOrder(roleOrder []string) {
     dc.roleNames = roleOrder
 }
 
-func (dc *Context) SaveRole(method string, path string, status int) {
+func (dc *DocumentContext) SaveRole(method string, path string, status int) {
     if dc.roleName != "" {
         key := RoleKey{method: method, path: path, roleName: dc.roleName}
         switch status {
@@ -153,11 +152,11 @@ func (dc *Context) SaveRole(method string, path string, status int) {
     }
 }
 
-func (dc *Context) GetRoleNames() []string {
+func (dc *DocumentContext) GetRoleNames() []string {
     return dc.roleNames
 }
 
-func (dc *Context) GetAccess(method string, path string, roleName string) int {
+func (dc *DocumentContext) GetAccess(method string, path string, roleName string) int {
     key := RoleKey{
         method:   method,
         path:     path,
@@ -169,21 +168,21 @@ func (dc *Context) GetAccess(method string, path string, roleName string) int {
     }
 }
 
-func (dc *Context) SaveEndpointDocumentation() {
+func (dc *DocumentContext) SaveEndpointDocumentation() {
     if dc.endpoint != nil {
         dc.endpoints = append(dc.endpoints, *dc.endpoint)
     }
 }
 
-func (dc *Context) GetEndpoints() []Endpoint {
+func (dc *DocumentContext) GetEndpoints() []Endpoint {
     return dc.endpoints
 }
 
-func (dc *Context) GetExampleSummary() string {
+func (dc *DocumentContext) GetExampleSummary() string {
     return dc.exampleSummary
 }
 
-func (dc *Context) GetExampleDescription() string {
+func (dc *DocumentContext) GetExampleDescription() string {
     return dc.exampleDescription
 }
 
@@ -217,10 +216,10 @@ type Field struct {
 
 func CreateField(typ reflect.Type, structField reflect.StructField) Field {
     jsonType := jsonType(typ)
-    jsonName := structField.Tag.Get(common.JsonTagName)
-    apiTagContent := structField.Tag.Get(common.ApiTagName)
-    mandatory := !strings.HasPrefix(apiTagContent, common.OptionalPrefix)
-    apiTagContent = strings.TrimPrefix(apiTagContent, common.OptionalPrefix)
+    jsonName := structField.Tag.Get(JsonTagName)
+    apiTagContent := structField.Tag.Get(ApiTagName)
+    mandatory := !strings.HasPrefix(apiTagContent, OptionalPrefix)
+    apiTagContent = strings.TrimPrefix(apiTagContent, OptionalPrefix)
     return Field{
         JsonName:    jsonName,
         JsonType:    jsonType,
@@ -291,16 +290,16 @@ func jsonType(typ reflect.Type) string {
 func PrintEndpoint(endpoint Endpoint) {
     fmt.Printf("\n\n%s\n%s\n\n", endpoint.Method, endpoint.UrlRoot)
     fmt.Println("Parameters:")
-    fmt.Println(common.MakeString('-', 120))
+    fmt.Println(makeText("-", 120))
     PrintFields(endpoint.RequestBody, "  ", 0)
     fmt.Println()
-    fmt.Println(common.MakeString('-', 120))
+    fmt.Println(makeText("-", 120))
     fmt.Printf("\n")
     fmt.Println("ResponseBody:")
-    fmt.Println(common.MakeString('-', 120))
+    fmt.Println(makeText("-", 120))
     PrintFields(endpoint.ResponseBody, "  ", 0)
     fmt.Println()
-    fmt.Println(common.MakeString('-', 120))
+    fmt.Println(makeText("-", 120))
     fmt.Printf("\n")
     for _, usage := range endpoint.Examples {
         PrintExample(usage)

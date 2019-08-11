@@ -22,7 +22,7 @@
  * SOFTWARE. 
  */
  
-package rest
+package oxyde
 
 import (
     "testing"

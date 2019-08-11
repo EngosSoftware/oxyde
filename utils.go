@@ -2,27 +2,27 @@
  * MIT License
  *
  * Copyright (c) 2017-2019 Dariusz Depta Engos Software
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE. 
+ * SOFTWARE.
  */
- 
-package common
+
+package oxyde
 
 import (
     "bufio"
@@ -34,21 +34,28 @@ import (
     "reflect"
     "regexp"
     "runtime"
+    "strings"
 )
 
 const (
-    ApiTagName     = "api"  // Name of the tag in which documentation details are stored.
-    JsonTagName    = "json" // Name of the tag in which JSON details are stored.
-    OptionalPrefix = "?"    // Prefix used to mark th field as optional.
+    ApiTagName         = "api"          // Name of the tag in which documentation details are stored.
+    JsonTagName        = "json"         // Name of the tag in which JSON details are stored.
+    VersionPlaceholder = "{apiVersion}" // Placeholder for API version number in request path.
+    OptionalPrefix     = "?"            // Prefix used to mark th field as optional.
 )
 
-// Function MakeString creates a string of length 'len' containing the same character 'ch'.
-func MakeString(ch byte, len int) string {
-    b := make([]byte, len)
-    for i := 0; i < len; i++ {
-        b[i] = ch
+var (
+    reCamelBoundary = regexp.MustCompile("([a-z])([A-Z])")
+    reFunctionName = regexp.MustCompile(`\.([a-zA-Z_0-9]+)\(`)
+)
+
+// Function makeText creates a string that contains repeated text.
+func makeText(text string, repeat int) string {
+    var builder strings.Builder
+    for i := 0; i < repeat; i++ {
+        builder.WriteString(text)
     }
-    return string(b)
+    return builder.String()
 }
 
 // Function NilValue checks if the value specified as parameter is nil.
@@ -103,10 +110,10 @@ func ValueOfValue(value interface{}) reflect.Value {
     return reflect.ValueOf(value)
 }
 
-// Function BrExit breaks the execution of test and displays stack trace.
+// Function brexit stops the execution of the test and displays the stack trace.
 // After breaking the execution flow, application returns exit code -1
 // that can be utilized by test automation tools.
-func BrExit() {
+func brexit() {
     fmt.Printf("Stack trace:\n------------\n")
     reDeepCalls := regexp.MustCompile(`(^goroutine[^:]*:$)|(^.*/oxyde/.*$)`)
     reFuncParams := regexp.MustCompile(`([a-zA-Z_0-9]+)\([^\)]+\)`)
@@ -124,4 +131,24 @@ func BrExit() {
         fmt.Println(line)
     }
     os.Exit(-1)
+}
+
+func FunctionName(level int) string {
+    b := make([]byte, 100000)
+    runtime.Stack(b, false)
+    scanner := bufio.NewScanner(bytes.NewBuffer(b))
+    index := 0
+    var line string
+    for scanner.Scan() {
+        line = scanner.Text()
+        if index == level*2+1 {
+            break
+        }
+        index++
+    }
+    line = reFunctionName.FindString(line)
+    line = reFunctionName.ReplaceAllString(line, "$1")
+    line = reCamelBoundary.ReplaceAllString(line, `$1#$2`)
+    line = strings.ToLower(strings.ReplaceAll(line, "#", "_"))
+    return line
 }

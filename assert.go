@@ -2,88 +2,89 @@
  * MIT License
  *
  * Copyright (c) 2017-2019 Dariusz Depta Engos Software
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE. 
+ * SOFTWARE.
  */
 
-package assert
+package oxyde
 
 import (
     "fmt"
-    "github.com/EngosSoftware/oxyde/common"
     "reflect"
 )
 
-func Nil(actual interface{}) {
-    if !common.NilValue(actual) {
+// Function AssertNil asserts that actual value is nil.
+// When actual value is not nil, an error is reported.
+func AssertNil(actual interface{}) {
+    if !isNil(actual) {
         displayAssertionError(nil, actual)
     }
 }
 
-func NotNil(actual interface{}) {
-    if reflect.ValueOf(actual).IsNil() {
+func AssertNotNil(actual interface{}) {
+    if isNil(actual) {
         displayAssertionError("not nil", actual)
     }
 }
 
-func NilError(e error) {
+func AssertNilError(e error) {
     if e != nil {
         displayAssertionError(nil, e)
     }
 }
 
-func NilString(actual *string) {
+func AssertNilString(actual *string) {
     if actual != nil {
         displayAssertionError(nil, actual)
     }
 }
 
-func NotNilString(actual *string) {
+func AssertNotNilString(actual *string) {
     if actual == nil {
         displayAssertionError("not nil", actual)
     }
 }
 
-func True(actual bool) {
+func AssertTrue(actual bool) {
     if !actual {
         displayAssertionError(true, actual)
     }
 }
 
-func False(actual bool) {
+func AssertFalse(actual bool) {
     if actual {
         displayAssertionError(false, actual)
     }
 }
 
-func NotNilId(actual *string) {
-    NotNilString(actual)
-    EqualInt(36, len(*actual))
+func AssertNotNilId(actual *string) {
+    AssertNotNilString(actual)
+    AssertEqualInt(36, len(*actual))
 }
 
-func EqualString(expected string, actual string) {
+func AssertEqualString(expected string, actual string) {
     if !equalString(expected, actual) {
         displayAssertionError(expected, actual)
     }
 }
 
-func EqualStringNullable(expected *string, actual *string) {
+func AssertEqualStringNullable(expected *string, actual *string) {
     if !equalStringNullable(expected, actual) {
         if expected != nil && actual != nil {
             displayAssertionError(*expected, *actual)
@@ -92,19 +93,19 @@ func EqualStringNullable(expected *string, actual *string) {
     }
 }
 
-func NilInt(actual *int) {
+func AssertNilInt(actual *int) {
     if actual != nil {
         displayAssertionError(nil, actual)
     }
 }
 
-func EqualInt(expected int, actual int) {
+func AssertEqualInt(expected int, actual int) {
     if !equalInt(expected, actual) {
         displayAssertionError(expected, actual)
     }
 }
 
-func EqualIntNullable(expected *int, actual *int) {
+func AssertEqualIntNullable(expected *int, actual *int) {
     if !equalIntNullable(expected, actual) {
         if expected != nil && actual != nil {
             displayAssertionError(*expected, *actual)
@@ -113,16 +114,21 @@ func EqualIntNullable(expected *int, actual *int) {
     }
 }
 
-func EqualFloat64(expected float64, actual float64) {
+func AssertEqualFloat64(expected float64, actual float64) {
     if !equalFloat64(expected, actual) {
         displayAssertionError(expected, actual)
     }
 }
 
-func EqualBool(expected bool, actual bool) {
+func AssertEqualBool(expected bool, actual bool) {
     if !equalBool(expected, actual) {
         displayAssertionError(expected, actual)
     }
+}
+
+// Function isNil checks if the value specified as parameter is nil.
+func isNil(value interface{}) bool {
+    return value == nil || (reflect.ValueOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
 // Function equalString checks if two string values are equal.
@@ -169,11 +175,11 @@ func equalBool(expected bool, actual bool) bool {
 
 // Function displayAssertionError displays assertion error details.
 func displayAssertionError(expected interface{}, actual interface{}) {
-    separator := common.MakeString('-', 120)
+    separator := makeText("-", 120)
     fmt.Printf("\n\n%s\n>     ERROR: assertion error\n>  Expected: %+v\n>    Actual: %+v\n%s\n\n",
         separator,
         expected,
         actual,
         separator)
-    common.BrExit()
+    brexit()
 }

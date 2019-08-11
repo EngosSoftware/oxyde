@@ -22,15 +22,12 @@
  * SOFTWARE. 
  */
  
-package server
+package oxyde
 
 import (
     "bytes"
     "fmt"
-    "github.com/EngosSoftware/oxyde/common"
-    d "github.com/EngosSoftware/oxyde/doc"
     h "github.com/EngosSoftware/oxyde/html"
-    m "github.com/EngosSoftware/oxyde/model"
     "io"
     "log"
     "net/http"
@@ -44,12 +41,12 @@ var (
     errorTemplate    = prepareErrorTemplate()
 )
 
-func StartPreview(dc *d.Context) {
-    model := m.CreateModel(dc)
+func StartPreview(dc *DocumentContext) {
+    model := CreatePreviewModel(dc)
     runPreviewServer(model, 16100)
 }
 
-func runPreviewServer(model *m.Model, port int) {
+func runPreviewServer(model *PreviewModel, port int) {
 
     index := func(w http.ResponseWriter, req *http.Request) {
         w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -59,7 +56,7 @@ func runPreviewServer(model *m.Model, port int) {
     styleCss := func(w http.ResponseWriter, req *http.Request) {
         w.Header().Set("Content-Type", "text/css")
         _, err := io.WriteString(w, h.StyleCss)
-        common.PanicOnError(err)
+        PanicOnError(err)
     }
 
     endpointDetails := func(w http.ResponseWriter, req *http.Request) {
@@ -86,25 +83,25 @@ func runPreviewServer(model *m.Model, port int) {
 
 func preparePageTemplate() *template.Template {
     t, err := template.New("pageTemplate").Parse(h.PageTemplate)
-    common.PanicOnError(err)
+    PanicOnError(err)
     return t
 }
 
 func prepareIndexTemplate() *template.Template {
     t, err := template.New("indexTemplate").Parse(h.IndexTemplate)
-    common.PanicOnError(err)
+    PanicOnError(err)
     return t
 }
 
 func prepareEndpointTemplate() *template.Template {
     t, err := template.New("endpointTemplate").Parse(h.EndpointTemplate)
-    common.PanicOnError(err)
+    PanicOnError(err)
     return t
 }
 
 func prepareErrorTemplate() *template.Template {
     t, err := template.New("errorTemplate").Parse(h.ErrorTemplate)
-    common.PanicOnError(err)
+    PanicOnError(err)
     return t
 }
 
@@ -112,7 +109,7 @@ func wrapInPage(w http.ResponseWriter, t *template.Template, data interface{}) {
     var out bytes.Buffer
     outWriter := io.Writer(&out)
     err := t.Execute(outWriter, data)
-    common.PanicOnError(err)
+    PanicOnError(err)
     err = pageTemplate.Execute(w, out.String())
-    common.PanicOnError(err)
+    PanicOnError(err)
 }

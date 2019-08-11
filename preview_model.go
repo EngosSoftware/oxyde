@@ -2,30 +2,29 @@
  * MIT License
  *
  * Copyright (c) 2017-2019 Dariusz Depta Engos Software
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE. 
+ * SOFTWARE.
  */
- 
-package model
+
+package oxyde
 
 import (
-    d "github.com/EngosSoftware/oxyde/doc"
     "sort"
     "strings"
 )
@@ -34,23 +33,63 @@ var (
     HttpMethodOrder = map[string]int{"POST": 1, "PUT": 2, "GET": 3, "DELETE": 4}
 )
 
-type Model struct {
-    Groups        []Group              // Groups of endpoints.
-    Endpoints     []Endpoint           // List of all endpoints in model.
-    EndpointsById map[string]*Endpoint // Pointers to endpoints by endpoint identifier.
-    RoleNames     []string             // List of tested role names for endpoints.
+type PreviewModel struct {
+    Groups        []PreviewGroup              // Groups of endpoints.
+    Endpoints     []PreviewEndpoint           // All endpoints in preview model.
+    EndpointsById map[string]*PreviewEndpoint // Endpoints indexed by identifier.
+    RoleNames     []string                    // Names of access roles for endpoints.
 }
 
-func CreateModel(dc *d.Context) *Model {
-    // create model structure
-    model := Model{
-        Groups:        make([]Group, 0),
-        Endpoints:     make([]Endpoint, 0),
-        EndpointsById: make(map[string]*Endpoint),
+type PreviewGroup struct {
+    Model     *PreviewModel      // Model the group belongs to.
+    Name      string             // Group name.
+    Endpoints []*PreviewEndpoint // Endpoints in group.
+}
+
+type PreviewEndpoint struct {
+    Id           string           // Unique endpoint identifier.
+    MethodUp     string           // HTTP method name in uppercase, like GET, POST, PUT or DELETE.
+    MethodLo     string           // HTTP method name in lowercase, like get, post, put or delete.
+    UrlRoot      string           // Root part of request URL.
+    UrlPath      string           // Request path after root part.
+    Tags         []string         // List of tags for endpoint.
+    Summary      string           // Summary describing endpoint.
+    Parameters   []PreviewField   // List of parameter fields.
+    RequestBody  []PreviewField   // List of request body fields.
+    ResponseBody []PreviewField   // List of response body fields.
+    Examples     []PreviewExample // List of examples.
+    Access       []string         // List of access rights for roles.
+}
+
+type PreviewField struct {
+    Name        string // Name of the field.
+    Type        string // Type of the field.
+    Mandatory   string // Flag indicating if field is mandatory.
+    MandatoryLo string // Flag indicating if field is mandatory in lowercase.
+    Description string // Description of the field.
+}
+
+type PreviewExample struct {
+    Summary      string // Usage example summary.
+    Description  string // Usage example description.
+    Method       string // HTTP method name.
+    MethodLo     string // HTTP method name in lowercase.
+    Uri          string // Full request URI.
+    StatusCode   int    // HTTP status code.
+    RequestBody  string // Request body as JSON string.
+    ResponseBody string // Response body as JSON string.
+}
+
+func CreatePreviewModel(dc *DocumentContext) *PreviewModel {
+    // create preview previewModel structure
+    previewModel := PreviewModel{
+        Groups:        make([]PreviewGroup, 0),
+        Endpoints:     make([]PreviewEndpoint, 0),
+        EndpointsById: make(map[string]*PreviewEndpoint),
         RoleNames:     dc.GetRoleNames()}
     // create all preview endpoints
     for _, docEndpoint := range dc.GetEndpoints() {
-        endpoint := Endpoint{
+        previewEndpoint := PreviewEndpoint{
             Id:           docEndpoint.Id,
             MethodUp:     strings.ToUpper(docEndpoint.Method),
             MethodLo:     strings.ToLower(docEndpoint.Method),
@@ -62,26 +101,55 @@ func CreateModel(dc *d.Context) *Model {
             RequestBody:  prepareFields(docEndpoint.RequestBody),
             ResponseBody: prepareFields(docEndpoint.ResponseBody),
             Examples:     prepareExamples(docEndpoint.Examples),
-            Access:       model.GetAccess(dc, docEndpoint.Method, docEndpoint.UrlPath)}
-        model.Endpoints = append(model.Endpoints, endpoint)
+            Access:       previewModel.GetAccess(dc, docEndpoint.Method, docEndpoint.UrlPath)}
+        previewModel.Endpoints = append(previewModel.Endpoints, previewEndpoint)
     }
     // prepare endpoint mapping by identifiers
-    for i, endpoint := range model.Endpoints {
-        model.EndpointsById[endpoint.Id] = &model.Endpoints[i]
+    for i, endpoint := range previewModel.Endpoints {
+        previewModel.EndpointsById[endpoint.Id] = &previewModel.Endpoints[i]
     }
     // create groups of endpoints
-    model.createGroups()
-    return &model
+    previewModel.createGroups()
+    return &previewModel
 }
 
-func (m *Model) FindEndpointById(id string) *Endpoint {
+func CreatePreviewGroup(previewModel *PreviewModel, name string, ids []string) PreviewGroup {
+    previewGroup := PreviewGroup{
+        Model:     previewModel,
+        Name:      strings.ToUpper(name),
+        Endpoints: make([]*PreviewEndpoint, 0)}
+    sort.SliceStable(ids, func(i1, i2 int) bool {
+        e1 := previewModel.EndpointsById[ids[i1]]
+        e2 := previewModel.EndpointsById[ids[i2]]
+        return compareEndpoints(e1, e2)
+    })
+    for _, id := range ids {
+        previewGroup.Endpoints = append(previewGroup.Endpoints, previewModel.EndpointsById[id])
+    }
+    return previewGroup
+}
+
+func compareEndpoints(e1, e2 *PreviewEndpoint) bool {
+    if i1, ok1 := HttpMethodOrder[e1.MethodUp]; ok1 {
+        if i2, ok2 := HttpMethodOrder[e2.MethodUp]; ok2 {
+            if i1 < i2 {
+                return true
+            } else if i1 == i2 {
+                return len(e1.UrlPath) < len(e2.UrlPath)
+            }
+        }
+    }
+    return false
+}
+
+func (m *PreviewModel) FindEndpointById(id string) *PreviewEndpoint {
     if endpoint, ok := m.EndpointsById[id]; ok {
         return endpoint
     }
     return nil
 }
 
-func (m *Model) createGroups() {
+func (m *PreviewModel) createGroups() {
     tags := make(map[string][]string)
     for _, docEndpoint := range m.Endpoints {
         if docEndpoint.Tags != nil {
@@ -99,24 +167,24 @@ func (m *Model) createGroups() {
         groupNames = append(groupNames, tag)
     }
     sort.Strings(groupNames)
-    m.Groups = make([]Group, 0)
+    m.Groups = make([]PreviewGroup, 0)
     for _, groupName := range groupNames {
-        group := CreateGroup(m, groupName, tags[groupName])
+        group := CreatePreviewGroup(m, groupName, tags[groupName])
         m.Groups = append(m.Groups, group)
     }
 }
 
-func (m *Model) GetAccess(dc *d.Context, method string, path string) []string {
+func (m *PreviewModel) GetAccess(dc *DocumentContext, method string, path string) []string {
     access := make([]string, len(m.RoleNames))
     for i, roleName := range m.RoleNames {
         switch dc.GetAccess(method, path, roleName) {
-        case d.AccessGranted:
+        case AccessGranted:
             access[i] = "YES"
-        case d.AccessDenied:
+        case AccessDenied:
             access[i] = "NO"
-        case d.AccessError:
+        case AccessError:
             access[i] = "ERR"
-        case d.AccessUnknown:
+        case AccessUnknown:
             access[i] = "?"
         default:
             access[i] = "-"
@@ -125,87 +193,18 @@ func (m *Model) GetAccess(dc *d.Context, method string, path string) []string {
     return access
 }
 
-type Group struct {
-    Model     *Model      // Mode the group belong to.
-    Name      string      // Group name.
-    Endpoints []*Endpoint // List of endpoint identifiers in group.
-}
-
-func CreateGroup(model *Model, name string, ids []string) Group {
-    group := Group{
-        Model:     model,
-        Name:      strings.ToUpper(name),
-        Endpoints: make([]*Endpoint, 0)}
-    sort.SliceStable(ids, func(i1, i2 int) bool {
-        e1 := model.EndpointsById[ids[i1]]
-        e2 := model.EndpointsById[ids[i2]]
-        return compareEndpoints(e1, e2)
-    })
-    for _, id := range ids {
-        group.Endpoints = append(group.Endpoints, model.EndpointsById[id])
-    }
-    return group
-}
-
-type Endpoint struct {
-    Id           string    // Unique endpoint identifier.
-    MethodUp     string    // HTTP method name in uppercase, like GET, POST, PUT or DELETE.
-    MethodLo     string    // HTTP method name in lowercase, like get, post, put or delete.
-    UrlRoot      string    // Root part of request URL.
-    UrlPath      string    // Request path after root part.
-    Tags         []string  // List of tags for endpoint.
-    Summary      string    // Summary describing endpoint.
-    Parameters   []Field   // List of parameter fields.
-    RequestBody  []Field   // List of request body fields.
-    ResponseBody []Field   // List of response body fields.
-    Examples     []Example // List of examples.
-    Access       []string  // List of access rights for roles.
-}
-
-type Field struct {
-    Name        string // Name of the field.
-    Type        string // Type of the field.
-    Mandatory   string // Flag indicating if field is mandatory.
-    MandatoryLo string // Flag indicating if field is mandatory in lowercase.
-    Description string // Description of the field.
-}
-
-type Example struct {
-    Summary      string // Example summary.
-    Description  string // Example detailed description.
-    Method       string // HTTP method name.
-    MethodLo     string // HTTP method name in lowercase.
-    Uri          string // Request URI.
-    StatusCode   int    // HTTP status code.
-    RequestBody  string // Request body as JSON string.
-    ResponseBody string // Response body as JSON string.
-}
-
-func compareEndpoints(e1, e2 *Endpoint) bool {
-    if i1, ok1 := HttpMethodOrder[e1.MethodUp]; ok1 {
-        if i2, ok2 := HttpMethodOrder[e2.MethodUp]; ok2 {
-            if i1 < i2 {
-                return true
-            } else if i1 == i2 {
-                return len(e1.UrlPath) < len(e2.UrlPath)
-            }
-        }
-    }
-    return false
-}
-
-func prepareFields(docFields []d.Field) []Field {
+func prepareFields(docFields []Field) []PreviewField {
     if docFields == nil {
         return nil
     }
     return traverseFields(docFields, 0)
 }
 
-func traverseFields(docFields []d.Field, level int) []Field {
-    previewFields := make([]Field, 0)
+func traverseFields(docFields []Field, level int) []PreviewField {
+    previewFields := make([]PreviewField, 0)
     for _, docField := range docFields {
         mandatory := prepareMandatoryString(docField.Mandatory)
-        previewField := Field{
+        previewField := PreviewField{
             Name:        prepareFieldNameString(docField.JsonName, level),
             Type:        docField.JsonType,
             Mandatory:   mandatory,
@@ -236,10 +235,10 @@ func prepareMandatoryString(mandatory bool) string {
     }
 }
 
-func prepareExamples(docExamples []d.Example) []Example {
-    examples := make([]Example, 0)
+func prepareExamples(docExamples []Example) []PreviewExample {
+    examples := make([]PreviewExample, 0)
     for _, docExample := range docExamples {
-        example := Example{
+        example := PreviewExample{
             Summary:      docExample.Summary,
             Description:  docExample.Description,
             Method:       docExample.Method,

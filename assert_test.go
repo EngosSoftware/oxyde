@@ -22,7 +22,7 @@
  * SOFTWARE. 
  */
  
-package assert
+package oxyde
 
 import "testing"
 
