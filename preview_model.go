@@ -26,6 +26,7 @@ package oxyde
 
 import (
     "sort"
+    "strconv"
     "strings"
 )
 
@@ -47,40 +48,47 @@ type PreviewGroup struct {
 }
 
 type PreviewEndpoint struct {
-    Id           string           // Unique endpoint identifier.
-    MethodUp     string           // HTTP method name in uppercase, like GET, POST, PUT or DELETE.
-    MethodLo     string           // HTTP method name in lowercase, like get, post, put or delete.
-    UrlRoot      string           // Root part of request URL.
-    UrlPath      string           // Request path after root part.
-    Tags         []string         // List of tags for endpoint.
-    Summary      string           // Summary describing endpoint.
-    Parameters   []PreviewField   // List of parameter fields.
-    RequestBody  []PreviewField   // List of request body fields.
-    ResponseBody []PreviewField   // List of response body fields.
-    Examples     []PreviewExample // List of examples.
-    Access       []string         // List of access rights for roles.
+    Id           string         // Unique endpoint identifier.
+    MethodUp     string         // HTTP method name in upper-case, like GET, POST, PUT or DELETE.
+    MethodLo     string         // HTTP method name in lower-case, like get, post, put or delete.
+    UrlRoot      string         // Root part of request URL.
+    UrlPath      string         // Request path after root part.
+    Tags         []string       // List of tags for endpoint.
+    Summary      string         // Summary describing endpoint.
+    Headers      []PreviewField // List of header fields.
+    Parameters   []PreviewField // List of parameter fields.
+    RequestBody  []PreviewField // List of request body fields.
+    ResponseBody []PreviewField // List of response body fields.
+    Usages       []PreviewUsage // List of examples.
+    Access       []string       // List of access rights for roles.
 }
 
 type PreviewField struct {
     Name        string // Name of the field.
     Type        string // Type of the field.
     Mandatory   string // Flag indicating if field is mandatory.
-    MandatoryLo string // Flag indicating if field is mandatory in lowercase.
+    MandatoryLo string // Flag indicating if field is mandatory in lower-case.
     Description string // Description of the field.
 }
 
-type PreviewExample struct {
-    Summary      string // Usage example summary.
-    Description  string // Usage example description.
-    Method       string // HTTP method name.
-    MethodLo     string // HTTP method name in lowercase.
-    Uri          string // Full request URI.
-    StatusCode   int    // HTTP status code.
-    RequestBody  string // Request body as JSON string.
-    ResponseBody string // Response body as JSON string.
+type PreviewHeader struct {
+    Name  string // HTTP header name.
+    Value string // HTTP header value.
 }
 
-func CreatePreviewModel(dc *DocumentContext) *PreviewModel {
+type PreviewUsage struct {
+    Summary      string          // Usage example summary.
+    Description  string          // Usage example description.
+    MethodUp     string          // HTTP method name in upper-case.
+    MethodLo     string          // HTTP method name in lower-case.
+    Url          string          // Full request URL.
+    Headers      []PreviewHeader // Usage headers.
+    RequestBody  string          // Request body as JSON string.
+    ResponseBody string          // Response body as JSON string.
+    StatusCode   int             // HTTP status code.
+}
+
+func CreatePreviewModel(dc *DocContext) *PreviewModel {
     // create preview previewModel structure
     previewModel := PreviewModel{
         Groups:        make([]PreviewGroup, 0),
@@ -88,25 +96,26 @@ func CreatePreviewModel(dc *DocumentContext) *PreviewModel {
         EndpointsById: make(map[string]*PreviewEndpoint),
         RoleNames:     dc.GetRoleNames()}
     // create all preview endpoints
-    for _, docEndpoint := range dc.GetEndpoints() {
+    for _, endpoint := range dc.GetEndpoints() {
         previewEndpoint := PreviewEndpoint{
-            Id:           docEndpoint.Id,
-            MethodUp:     strings.ToUpper(docEndpoint.Method),
-            MethodLo:     strings.ToLower(docEndpoint.Method),
-            UrlRoot:      docEndpoint.UrlRoot,
-            UrlPath:      docEndpoint.UrlPath,
-            Tags:         append(make([]string, 0), docEndpoint.Tags...),
-            Summary:      docEndpoint.Summary,
-            Parameters:   prepareFields(docEndpoint.Parameters),
-            RequestBody:  prepareFields(docEndpoint.RequestBody),
-            ResponseBody: prepareFields(docEndpoint.ResponseBody),
-            Examples:     prepareExamples(docEndpoint.Examples),
-            Access:       previewModel.GetAccess(dc, docEndpoint.Method, docEndpoint.UrlPath)}
+            Id:           endpoint.Id,
+            MethodUp:     strings.ToUpper(endpoint.Method),
+            MethodLo:     strings.ToLower(endpoint.Method),
+            UrlRoot:      endpoint.UrlRoot,
+            UrlPath:      endpoint.UrlPath,
+            Tags:         append(make([]string, 0), endpoint.Tags...),
+            Summary:      endpoint.Summary,
+            Headers:      prepareFields(endpoint.Headers),
+            Parameters:   prepareFields(endpoint.Parameters),
+            RequestBody:  prepareFields(endpoint.RequestBody),
+            ResponseBody: prepareFields(endpoint.ResponseBody),
+            Usages:       preparePreviewUsages(endpoint.Usages),
+            Access:       previewModel.GetAccess(dc, endpoint.Method, endpoint.UrlPath)}
         previewModel.Endpoints = append(previewModel.Endpoints, previewEndpoint)
     }
-    // prepare endpoint mapping by identifiers
-    for i, endpoint := range previewModel.Endpoints {
-        previewModel.EndpointsById[endpoint.Id] = &previewModel.Endpoints[i]
+    // prepare previewEndpoint mapping by identifiers
+    for i, previewEndpoint := range previewModel.Endpoints {
+        previewModel.EndpointsById[previewEndpoint.Id] = &previewModel.Endpoints[i]
     }
     // create groups of endpoints
     previewModel.createGroups()
@@ -174,7 +183,7 @@ func (m *PreviewModel) createGroups() {
     }
 }
 
-func (m *PreviewModel) GetAccess(dc *DocumentContext, method string, path string) []string {
+func (m *PreviewModel) GetAccess(dc *DocContext, method string, path string) []string {
     access := make([]string, len(m.RoleNames))
     for i, roleName := range m.RoleNames {
         switch dc.GetAccess(method, path, roleName) {
@@ -200,19 +209,19 @@ func prepareFields(docFields []Field) []PreviewField {
     return traverseFields(docFields, 0)
 }
 
-func traverseFields(docFields []Field, level int) []PreviewField {
+func traverseFields(fields []Field, level int) []PreviewField {
     previewFields := make([]PreviewField, 0)
-    for _, docField := range docFields {
-        mandatory := prepareMandatoryString(docField.Mandatory)
+    for _, field := range fields {
+        mandatory := prepareMandatoryString(field.Mandatory)
         previewField := PreviewField{
-            Name:        prepareFieldNameString(docField.JsonName, level),
-            Type:        docField.JsonType,
+            Name:        prepareFieldNameString(field.JsonName, level),
+            Type:        field.JsonType,
             Mandatory:   mandatory,
             MandatoryLo: strings.ToLower(mandatory),
-            Description: docField.Description}
+            Description: field.Description}
         previewFields = append(previewFields, previewField)
-        if docField.Children != nil {
-            previewFields = append(previewFields, traverseFields(docField.Children, level+1)...)
+        if field.Children != nil {
+            previewFields = append(previewFields, traverseFields(field.Children, level+1)...)
         }
     }
     return previewFields
@@ -235,23 +244,37 @@ func prepareMandatoryString(mandatory bool) string {
     }
 }
 
-func prepareExamples(docExamples []Example) []PreviewExample {
-    examples := make([]PreviewExample, 0)
-    for _, docExample := range docExamples {
-        example := PreviewExample{
-            Summary:      docExample.Summary,
-            Description:  docExample.Description,
-            Method:       docExample.Method,
-            MethodLo:     strings.ToLower(docExample.Method),
-            Uri:          docExample.Uri,
-            StatusCode:   docExample.StatusCode,
-            RequestBody:  docExample.RequestBody,
-            ResponseBody: docExample.ResponseBody}
-        examples = append(examples, example)
+func preparePreviewUsages(usages []Usage) []PreviewUsage {
+    previewUsages := make([]PreviewUsage, 0)
+    for _, usage := range usages {
+        previewExample := PreviewUsage{
+            Summary:      usage.Summary,
+            Description:  usage.Description,
+            MethodUp:     strings.ToUpper(usage.Method),
+            MethodLo:     strings.ToLower(usage.Method),
+            Headers:      preparePreviewHeaders(usage.Headers),
+            Url:          usage.Url,
+            StatusCode:   usage.StatusCode,
+            RequestBody:  usage.RequestBody,
+            ResponseBody: usage.ResponseBody}
+        previewUsages = append(previewUsages, previewExample)
     }
-    // sort examples by status code in ascending order
-    sort.Slice(examples, func(i, j int) bool {
-        return examples[i].StatusCode < examples[j].StatusCode
+    // sort preview usages by status code in ascending order
+    sort.Slice(previewUsages, func(i, j int) bool {
+        return previewUsages[i].StatusCode < previewUsages[j].StatusCode
     })
-    return examples
+    return previewUsages
+}
+
+func preparePreviewHeaders(headers headers) []PreviewHeader {
+    const maxLen = 50
+    previewHeaders := make([]PreviewHeader, 0)
+    for name, value := range headers {
+        length := len(value)
+        if length > maxLen {
+            value = value[:maxLen] + "[...](" + strconv.Itoa(length) + ")"
+        }
+        previewHeaders = append(previewHeaders, PreviewHeader{Name: name, Value: value})
+    }
+    return previewHeaders
 }

@@ -58,14 +58,14 @@ func makeText(text string, repeat int) string {
     return builder.String()
 }
 
-// Function NilValue checks if the value specified as parameter is nil.
-func NilValue(value interface{}) bool {
+// Function nilValue checks if the value specified as parameter is nil.
+func nilValue(value interface{}) bool {
     return value == nil || (reflect.ValueOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
-// Function PrettyPrint takes JSON string as an argument
-// and returns the same JSON but pretty-printed.
-func PrettyPrint(in []byte) string {
+// Function prettyPrint takes JSON string as a parameter
+// and returns the same string as pretty-printed JSON.
+func prettyPrint(in []byte) string {
     var out bytes.Buffer
     err := json.Indent(&out, in, "", "  ")
     if err != nil {
@@ -74,17 +74,17 @@ func PrettyPrint(in []byte) string {
     return out.String()
 }
 
-// Function PanicOnError panics when the error passed as argument is not nil.
-func PanicOnError(err error) {
+// Function panicOnError panics when the error passed as argument is not nil.
+func panicOnError(err error) {
     if err != nil {
         panic(err)
     }
 }
 
-// Function GenerateId generated unique identifier in form of UUID string.
-func GenerateId() string {
+// Function generateId returns universally unique identifier.
+func generateId() string {
     id, err := uuid.NewRandom()
-    PanicOnError(err)
+    panicOnError(err)
     return id.String()
 }
 

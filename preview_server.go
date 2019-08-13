@@ -41,7 +41,7 @@ var (
     errorTemplate    = prepareErrorTemplate()
 )
 
-func StartPreview(dc *DocumentContext) {
+func StartPreview(dc *DocContext) {
     model := CreatePreviewModel(dc)
     runPreviewServer(model, 16100)
 }
@@ -56,7 +56,7 @@ func runPreviewServer(model *PreviewModel, port int) {
     styleCss := func(w http.ResponseWriter, req *http.Request) {
         w.Header().Set("Content-Type", "text/css")
         _, err := io.WriteString(w, h.StyleCss)
-        PanicOnError(err)
+        panicOnError(err)
     }
 
     endpointDetails := func(w http.ResponseWriter, req *http.Request) {
@@ -83,25 +83,25 @@ func runPreviewServer(model *PreviewModel, port int) {
 
 func preparePageTemplate() *template.Template {
     t, err := template.New("pageTemplate").Parse(h.PageTemplate)
-    PanicOnError(err)
+    panicOnError(err)
     return t
 }
 
 func prepareIndexTemplate() *template.Template {
     t, err := template.New("indexTemplate").Parse(h.IndexTemplate)
-    PanicOnError(err)
+    panicOnError(err)
     return t
 }
 
 func prepareEndpointTemplate() *template.Template {
     t, err := template.New("endpointTemplate").Parse(h.EndpointTemplate)
-    PanicOnError(err)
+    panicOnError(err)
     return t
 }
 
 func prepareErrorTemplate() *template.Template {
     t, err := template.New("errorTemplate").Parse(h.ErrorTemplate)
-    PanicOnError(err)
+    panicOnError(err)
     return t
 }
 
@@ -109,7 +109,7 @@ func wrapInPage(w http.ResponseWriter, t *template.Template, data interface{}) {
     var out bytes.Buffer
     outWriter := io.Writer(&out)
     err := t.Execute(outWriter, data)
-    PanicOnError(err)
+    panicOnError(err)
     err = pageTemplate.Execute(w, out.String())
-    PanicOnError(err)
+    panicOnError(err)
 }

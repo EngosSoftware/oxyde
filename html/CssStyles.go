@@ -275,6 +275,23 @@ pre {
   max-width: 1000px;
 }
 
+.example-header-container {
+  display: flex; 
+  flex-direction: row;
+  margin-bottom: 8px;
+}
+
+.example-header-name {
+  margin-right: 10px;
+  padding: 2px 8px 3px 8px;
+  color: white;
+  background-color: gray;
+  border-radius: 10px;
+}
+
+.example-header-value {
+}
+
 .example-request {
   margin: 4px 0 8px 0;
 }

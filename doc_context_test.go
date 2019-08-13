@@ -38,7 +38,7 @@ type TestLoginParams struct {
 
 func TestSimpleJSONObject(t *testing.T) {
 
-    fields := ParseObject(TestLoginParams{})
+    fields := ParseType(TestLoginParams{})
     if len(fields) != 2 {
         t.Error("expected two fields in object")
     }
@@ -117,7 +117,7 @@ func TestA(t *testing.T) {
         SubDetails: nil,
         Tags:       nil}
     fmt.Println("---d")
-    ParseObject(s)
+    ParseType(s)
     // Traverse(&s)
     fmt.Println()
 }
@@ -132,8 +132,7 @@ func TestSimpleTypes(t *testing.T) {
         Tags    []string `json:"tags" api:"Tags."`
     }
     d := Data{}
-    fields := ParseObject(d)
-    PrintFields(fields, " ", 0)
+    ParseType(d)
     fmt.Println()
 }
 
@@ -157,7 +156,6 @@ func TestStructures(t *testing.T) {
         Address *Address `json:"address" api:"Address details."`
     }
     d := &Data{}
-    fields := ParseObject(d)
-    PrintFields(fields, "   ", 0)
+    ParseType(d)
     fmt.Println()
 }

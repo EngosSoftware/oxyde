@@ -43,147 +43,203 @@ const (
     httpDELETE = "DELETE"
 )
 
-// Interface for request context. Instances of this interface
-// provide data required to successfully execute HTTP requests.
+// Interface for request context. Instances of this interface provide additional
+// data required to successfully execute HTTP requests.
 type Context interface {
-    GetUrl() string                // Returns URL of the endpoint to be called.
-    GetAuthorizationToken() string // Returns access token to be passed in 'Authorization' header.
-    GetHeaders() map[string]string // Returns map of HTTP headers to be passed to endpoint call.
-    GetVerbose() bool              // Returns flag indicating if executing process should be more verbose.
-    GetVersion() string            // Returns API version to be replaced in URL.
+    GetUrl() string     // Returns URL of the endpoint to be called.
+    GetVerbose() bool   // Returns flag indicating if executing process should be more verbose.
+    GetVersion() string // Returns API version to be replaced in URL.
 }
 
 // Function HttpGETString executes HTTP GET request and returns simple text result (not JSON string!)
-func HttpGETString(c Context, dc *DocumentContext, path string, params interface{}, result interface{}, status int) {
+func HttpGETString(c Context, dc *DocContext, path string, params interface{}, result interface{}, status int) {
     requestPath, err := prepareRequestPath(path, c.GetVersion(), params)
     uri := prepareUri(c, requestPath)
     displayRequestDetails(c, httpGET, uri)
     req, err := http.NewRequest(httpGET, uri, nil)
-    PanicOnError(err)
-    setRequestHeaders(c, req)
+    panicOnError(err)
+    setRequestHeaders(c, req, nil)
     client := http.Client{}
     res, err := client.Do(req)
-    PanicOnError(err)
+    panicOnError(err)
     panicOnUnexpectedStatusCode(c, status, res)
     responseBody := readResponseBody(c, res)
-    collectDocumentationData(c, dc, res, httpGET, path, requestPath, params, nil, result, nil, responseBody)
-    resultFields := ParseObject(result)
+    collectDocumentationData(c, dc, res, httpGET, path, requestPath, nil, params, nil, result, nil, responseBody)
+    resultFields := ParseType(result)
     if len(resultFields) == 1 && resultFields[0].JsonName == "-" && resultFields[0].JsonType == "string" {
         reflect.ValueOf(result).Elem().Field(0).SetString(string(responseBody))
     }
 }
 
 // Function HttpGET executes HTTP GET request and returns JSON result.
-func HttpGET(c Context, dc *DocumentContext, path string, params interface{}, result interface{}, status int) {
+func HttpGET(
+    c Context,           /* Request context. */
+    dc *DocContext,      /* Documentation context. */
+    path string,         /* Request path. */
+    headers interface{}, /* Request headers. */
+    params interface{},  /* Request parameters. */
+    result interface{},  /* Response payload (response body). */
+    status int           /* Expected HTTP status code. */) {
     var responseBody []byte
     requestPath, err := prepareRequestPath(path, c.GetVersion(), params)
     uri := prepareUri(c, requestPath)
     displayRequestDetails(c, httpGET, uri)
     req, err := http.NewRequest(httpGET, uri, nil)
-    PanicOnError(err)
-    setRequestHeaders(c, req)
+    panicOnError(err)
+    setRequestHeaders(c, req, headers)
     client := http.Client{}
     res, err := client.Do(req)
-    PanicOnError(err)
+    panicOnError(err)
     panicOnUnexpectedStatusCode(c, status, res)
-    if NilValue(result) {
+    if nilValue(result) {
         responseBody = nil
     } else {
         responseBody = readResponseBody(c, res)
         err = json.Unmarshal(responseBody, result)
-        PanicOnError(err)
+        panicOnError(err)
     }
-    collectDocumentationData(c, dc, res, httpGET, path, requestPath, params, nil, result, nil, responseBody)
+    collectDocumentationData(c, dc, res, httpGET, path, requestPath, headers, params, nil, result, nil, responseBody)
 }
 
 // Function HttpPOST executes HTTP POST request.
-func HttpPOST(c Context, dc *DocumentContext, path string, payload interface{}, result interface{}, status int) {
-    httpCall(c, dc, httpPOST, path, nil, payload, result, status)
+func HttpPOST(
+    c Context,           /* Request context. */
+    dc *DocContext,      /* Documentation context. */
+    path string,         /* Request path. */
+    headers interface{}, /* Request headers. */
+    params interface{},  /* Request parameters. */
+    body interface{},    /* Request payload (request body). */
+    result interface{},  /* Response payload (response body). */
+    status int           /* Expected HTTP status code. */) {
+    httpCall(c, dc, httpPOST, path, headers, params, body, result, status)
 }
 
 // Function HttpPUT executes HTTP PUT request.
-func HttpPUT(c Context, dc *DocumentContext, path string, payload interface{}, result interface{}, status int) {
-    httpCall(c, dc, httpPUT, path, nil, payload, result, status)
+func HttpPUT(
+    c Context,           /* Request context. */
+    dc *DocContext,      /* Documentation context. */
+    path string,         /* Request path. */
+    headers interface{}, /* Request headers. */
+    params interface{},  /* Request parameters. */
+    body interface{},    /* Request payload (request body). */
+    result interface{},  /* Response payload (response body). */
+    status int           /* Expected HTTP status code. */) {
+    httpCall(c, dc, httpPUT, path, headers, params, body, result, status)
 }
 
 // Function HttpDELETE executes HTTP DELETE request.
-func HttpDELETE(c Context, dc *DocumentContext, path string, params interface{}, payload interface{}, result interface{}, status int) {
-    httpCall(c, dc, httpDELETE, path, params, payload, result, status)
+func HttpDELETE(
+    c Context,           /* Request context. */
+    dc *DocContext,      /* Documentation context. */
+    path string,         /* Request path. */
+    headers interface{}, /* Request headers. */
+    params interface{},  /* Request parameters. */
+    body interface{},    /* Request payload (request body). */
+    result interface{},  /* Response payload (response body). */
+    status int           /* Expected HTTP status code. */) {
+    httpCall(c, dc, httpDELETE, path, headers, params, body, result, status)
 }
 
 // Function httpCall executes HTTP request with specified HTTP method and parameters.
-func httpCall(c Context, dc *DocumentContext, method string, path string, params interface{}, payload interface{}, result interface{}, status int) {
+func httpCall(
+    c Context,
+    dc *DocContext,
+    method string,
+    path string,
+    headers interface{},
+    params interface{},
+    body interface{},
+    result interface{},
+    status int) {
     var req *http.Request
     var requestBody []byte
     var responseBody []byte
     var err error
     requestPath, err := prepareRequestPath(path, c.GetVersion(), params)
-    PanicOnError(err)
+    panicOnError(err)
     uri := prepareUri(c, requestPath)
     displayRequestDetails(c, method, uri)
-    if NilValue(payload) {
+    if nilValue(body) {
         requestBody = nil
         displayRequestPayload(c, nil)
         req, err = http.NewRequest(method, uri, nil)
-        PanicOnError(err)
+        panicOnError(err)
     } else {
-        requestBody, err = json.Marshal(payload)
-        PanicOnError(err)
+        requestBody, err = json.Marshal(body)
+        panicOnError(err)
         displayRequestPayload(c, requestBody)
         req, err = http.NewRequest(method, uri, bytes.NewReader(requestBody))
-        PanicOnError(err)
+        panicOnError(err)
         req.Header.Add("Content-Type", "application/json")
     }
-    setRequestHeaders(c, req)
+    setRequestHeaders(c, req, headers)
     client := http.Client{}
     res, err := client.Do(req)
-    PanicOnError(err)
+    panicOnError(err)
     panicOnUnexpectedStatusCode(c, status, res)
-    if NilValue(result) {
+    if nilValue(result) {
         responseBody = nil
     } else {
         responseBody = readResponseBody(c, res)
         err = json.Unmarshal(responseBody, result)
-        PanicOnError(err)
+        panicOnError(err)
     }
-    collectDocumentationData(c, dc, res, method, path, requestPath, params, payload, result, requestBody, responseBody)
+    collectDocumentationData(c, dc, res, method, path, requestPath, headers, params, body, result, requestBody, responseBody)
 }
 
-func collectDocumentationData(c Context, dc *DocumentContext, res *http.Response, method string, path string, requestPath string, params interface{}, payload interface{}, result interface{}, requestBody []byte, responseBody []byte) {
+func collectDocumentationData(
+    c Context,
+    dc *DocContext,
+    res *http.Response,
+    method string,
+    path string,
+    requestPath string,
+    headers interface{},
+    params interface{},
+    payload interface{},
+    result interface{},
+    requestBody []byte,
+    responseBody []byte) {
     if endpoint := dc.GetEndpoint(); endpoint != nil && dc.CollectDescriptionMode() {
         endpoint.Method = method
         endpoint.UrlRoot = c.GetUrl()
         endpoint.UrlPath = preparePath(path, c.GetVersion())
-        if NilValue(params) {
+        if nilValue(headers) {
+            endpoint.Headers = nil
+        } else {
+            endpoint.Headers = ParseType(headers)
+        }
+        if nilValue(params) {
             endpoint.Parameters = nil
         } else {
-            endpoint.Parameters = ParseObject(params)
+            endpoint.Parameters = ParseType(params)
         }
-        if NilValue(payload) {
+        if nilValue(payload) {
             endpoint.RequestBody = nil
         } else {
-            endpoint.RequestBody = ParseObject(payload)
+            endpoint.RequestBody = ParseType(payload)
         }
-        if NilValue(result) {
+        if nilValue(result) {
             endpoint.ResponseBody = nil
         } else {
-            endpoint.ResponseBody = ParseObject(result)
+            endpoint.ResponseBody = ParseType(result)
         }
     }
     if endpoint := dc.GetEndpoint(); endpoint != nil && dc.CollectExamplesMode() {
-        examples := endpoint.Examples
-        if examples == nil {
-            endpoint.Examples = make([]Example, 0)
+        usages := endpoint.Usages
+        if usages == nil {
+            endpoint.Usages = make([]Usage, 0)
         }
-        example := Example{
+        usage := Usage{
             Summary:      dc.GetExampleSummary(),
             Description:  dc.GetExampleDescription(),
             Method:       method,
-            Uri:          c.GetUrl() + requestPath,
-            StatusCode:   res.StatusCode,
-            RequestBody:  PrettyPrint(requestBody),
-            ResponseBody: PrettyPrint(responseBody)}
-        endpoint.Examples = append(endpoint.Examples, example)
+            Headers:      parseHeaders(headers),
+            Url:          c.GetUrl() + requestPath,
+            RequestBody:  prettyPrint(requestBody),
+            ResponseBody: prettyPrint(responseBody),
+            StatusCode:   res.StatusCode}
+        endpoint.Usages = append(endpoint.Usages, usage)
     }
     dc.SaveRole(method, preparePath(path, c.GetVersion()), res.StatusCode)
     dc.StopCollecting()
@@ -204,7 +260,7 @@ func prepareRequestPath(path string, version string, params interface{}) (string
             path = strings.ReplaceAll(path, VersionPlaceholder, version)
         }
     }
-    if NilValue(params) {
+    if nilValue(params) {
         return path, nil
     }
     paramsType := TypeOfValue(params)
@@ -217,7 +273,7 @@ func prepareRequestPath(path string, version string, params interface{}) (string
         fieldJsonName := field.Tag.Get(JsonTagName)
         placeholder := "{" + fieldJsonName + "}"
         value := ValueOfValue(params).Field(i).Interface()
-        if !NilValue(value) {
+        if !nilValue(value) {
             valueStr := url.PathEscape(fmt.Sprintf("%v", ValueOfValue(value)))
             if strings.Contains(path, placeholder) {
                 path = strings.ReplaceAll(path, placeholder, valueStr)
@@ -235,24 +291,19 @@ func prepareRequestPath(path string, version string, params interface{}) (string
     return path, nil
 }
 
-// Function setRequestHeaders adds to the request authorization header and user defined headers.
-func setRequestHeaders(c Context, req *http.Request) {
-    if len(c.GetAuthorizationToken()) > 0 {
-        req.Header.Add("Authorization", c.GetAuthorizationToken())
-    }
-    if c.GetHeaders() != nil {
-        for name, value := range c.GetHeaders() {
-            req.Header.Add(name, value)
-        }
+// Function setRequestHeaders adds headers to the request.
+func setRequestHeaders(c Context, req *http.Request, headers interface{}) {
+    for name, value := range parseHeaders(headers) {
+        req.Header.Add(name, value)
     }
 }
 
 // Function readResponseBody reads and returns the body of HTTP response.
 func readResponseBody(c Context, res *http.Response) []byte {
     body, err := ioutil.ReadAll(res.Body)
-    PanicOnError(err)
+    panicOnError(err)
     err = res.Body.Close()
-    PanicOnError(err)
+    panicOnError(err)
     displayResponseBody(c, body)
     return body
 }
@@ -278,7 +329,7 @@ func displayRequestPayload(c Context, payload []byte) {
         if payload == nil {
             fmt.Printf("\n===> REQUEST PAYLOAD:\n(none)\n")
         } else {
-            fmt.Printf("\n===> REQUEST PAYLOAD:\n%s\n", PrettyPrint(payload))
+            fmt.Printf("\n===> REQUEST PAYLOAD:\n%s\n", prettyPrint(payload))
         }
     }
 }
@@ -290,7 +341,7 @@ func displayResponseBody(c Context, body []byte) {
         if body == nil {
             fmt.Printf("\n<=== RESPONSE BODY:\n(none)\n")
         } else {
-            fmt.Printf("\n<=== RESPONSE BODY:\n%s\n", PrettyPrint(body))
+            fmt.Printf("\n<=== RESPONSE BODY:\n%s\n", prettyPrint(body))
         }
     }
 }
