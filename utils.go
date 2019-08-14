@@ -115,7 +115,7 @@ func ValueOfValue(value interface{}) reflect.Value {
 // that can be utilized by test automation tools.
 func brexit() {
     fmt.Printf("Stack trace:\n------------\n")
-    reDeepCalls := regexp.MustCompile(`(^goroutine[^:]*:$)|(^.*/oxyde/.*$)`)
+    reDeepCalls := regexp.MustCompile(`(^goroutine[^:]*:$)|(^.*oxyde.*$)`)
     reFuncParams := regexp.MustCompile(`([a-zA-Z_0-9]+)\([^\)]+\)`)
     reFuncOffset := regexp.MustCompile(`\s+\+.*$`)
     b := make([]byte, 100000)
