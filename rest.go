@@ -202,8 +202,8 @@ func collectDocumentationData(
     responseBody []byte) {
     if endpoint := dc.GetEndpoint(); endpoint != nil && dc.CollectDescriptionMode() {
         endpoint.Method = method
-        endpoint.UrlRoot = c.GetUrl()
-        endpoint.UrlPath = preparePath(path, c.GetVersion())
+        endpoint.RootPath = c.GetUrl()
+        endpoint.RequestPath = preparePath(path, c.GetVersion())
         if nilValue(headers) {
             endpoint.Headers = nil
         } else {

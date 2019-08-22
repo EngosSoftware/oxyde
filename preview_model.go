@@ -53,8 +53,9 @@ type PreviewEndpoint struct {
     MethodLo     string         // HTTP method name in lower-case, like get, post, put or delete.
     UrlRoot      string         // Root part of request URL.
     UrlPath      string         // Request path after root part.
-    Tags         []string       // List of tags for endpoint.
+    Group        string         // Name of the group the endpoint belongs to.
     Summary      string         // Summary describing endpoint.
+    Description  string         // Detailed endpoint description.
     Headers      []PreviewField // List of header fields.
     Parameters   []PreviewField // List of parameter fields.
     RequestBody  []PreviewField // List of request body fields.
@@ -101,16 +102,17 @@ func CreatePreviewModel(dc *DocContext) *PreviewModel {
             Id:           endpoint.Id,
             MethodUp:     strings.ToUpper(endpoint.Method),
             MethodLo:     strings.ToLower(endpoint.Method),
-            UrlRoot:      endpoint.UrlRoot,
-            UrlPath:      endpoint.UrlPath,
-            Tags:         append(make([]string, 0), endpoint.Tags...),
+            UrlRoot:      endpoint.RootPath,
+            UrlPath:      endpoint.RequestPath,
+            Group:        endpoint.Group,
             Summary:      endpoint.Summary,
+            Description:  endpoint.Description,
             Headers:      prepareFields(endpoint.Headers),
             Parameters:   prepareFields(endpoint.Parameters),
             RequestBody:  prepareFields(endpoint.RequestBody),
             ResponseBody: prepareFields(endpoint.ResponseBody),
             Usages:       preparePreviewUsages(endpoint.Usages),
-            Access:       previewModel.GetAccess(dc, endpoint.Method, endpoint.UrlPath)}
+            Access:       previewModel.GetAccess(dc, endpoint.Method, endpoint.RequestPath)}
         previewModel.Endpoints = append(previewModel.Endpoints, previewEndpoint)
     }
     // prepare previewEndpoint mapping by identifiers
@@ -159,26 +161,23 @@ func (m *PreviewModel) FindEndpointById(id string) *PreviewEndpoint {
 }
 
 func (m *PreviewModel) createGroups() {
-    tags := make(map[string][]string)
-    for _, docEndpoint := range m.Endpoints {
-        if docEndpoint.Tags != nil {
-            for _, tag := range docEndpoint.Tags {
-                if ids, ok := tags[tag]; ok {
-                    tags[tag] = append(ids, docEndpoint.Id)
-                } else {
-                    tags[tag] = append(make([]string, 0), docEndpoint.Id)
-                }
-            }
+    groups := make(map[string][]string)
+    for _, endpoint := range m.Endpoints {
+        groupName := endpoint.Group
+        if ids, ok := groups[groupName]; ok {
+            groups[groupName] = append(ids, endpoint.Id)
+        } else {
+            groups[groupName] = append(make([]string, 0), endpoint.Id)
         }
     }
     groupNames := make([]string, 0)
-    for tag := range tags {
-        groupNames = append(groupNames, tag)
+    for groupName := range groups {
+        groupNames = append(groupNames, groupName)
     }
     sort.Strings(groupNames)
     m.Groups = make([]PreviewGroup, 0)
     for _, groupName := range groupNames {
-        group := CreatePreviewGroup(m, groupName, tags[groupName])
+        group := CreatePreviewGroup(m, groupName, groups[groupName])
         m.Groups = append(m.Groups, group)
     }
 }

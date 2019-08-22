@@ -135,6 +135,15 @@ pre {
   margin: 10px 0 10px 0;
 }
 
+.endpoint-details-description {
+  font-weight: normal;
+  font-size: 1.2em;
+  margin: 10px 0 10px 0;
+  padding: 10px 0 10px 0;
+  border-bottom: solid 1px gray;
+  width: 70%;
+}
+
 .fields-container-title {
   font-size: 1.3em;
   font-weight: bold;

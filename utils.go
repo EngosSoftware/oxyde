@@ -41,7 +41,7 @@ const (
     ApiTagName         = "api"          // Name of the tag in which documentation details are stored.
     JsonTagName        = "json"         // Name of the tag in which JSON details are stored.
     VersionPlaceholder = "{apiVersion}" // Placeholder for API version number in request path.
-    OptionalPrefix     = "?"            // Prefix used to mark th field as optional.
+    OptionalPrefix     = "?"            // Prefix used to mark the field as optional.
 )
 
 var (

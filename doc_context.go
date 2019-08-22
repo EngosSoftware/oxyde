@@ -36,14 +36,14 @@ const (
 )
 
 type DocContext struct {
-    mode             int        // Documentation collecting data mode.
-    usageSummary     string     // Summary for the next collected usage example.
-    usageDescription string     // Detailed description for the next collected usage example.
-    roleName         string     // Role name of the principal for the next endpoint usage example.
-    endpoint         *Endpoint  // Pointer to currently documented endpoint.
-    endpoints        []Endpoint // List of documented endpoints with usage examples.
-    roleNames        []string   // Role names in order they should be displayed.
-    roles            roles      // Map of verified access roles for all endpoints.
+    mode             int           // Documentation collecting data mode.
+    usageSummary     string        // Summary for the next collected usage example.
+    usageDescription string        // Detailed description for the next collected usage example.
+    roleName         string        // Principal's role name for the next endpoint usage example.
+    endpoint         *DocEndpoint  // Pointer to currently documented endpoint.
+    endpoints        []DocEndpoint // List of all documented endpoints with usage examples.
+    roleNames        []string      // Role names in order they should be displayed in preview.
+    roles            roles         // Map of verified access roles for all endpoints.
 }
 
 func CreateDocContext() *DocContext {
@@ -53,26 +53,30 @@ func CreateDocContext() *DocContext {
         usageDescription: "",
         roleName:         "",
         endpoint:         nil,
-        endpoints:        make([]Endpoint, 0),
+        endpoints:        make([]DocEndpoint, 0),
         roles:            make(roles)}
 }
 
 func (dc *DocContext) Clear() {
     dc.mode = CollectNothing
+    dc.usageSummary = ""
+    dc.usageDescription = ""
+    dc.roleName = ""
     dc.endpoint = nil
-    dc.endpoints = make([]Endpoint, 0)
+    dc.endpoints = make([]DocEndpoint, 0)
     dc.roles = make(map[roleKey]int)
 }
 
-func (dc *DocContext) NewEndpoint(tag string, summary string, description string) {
-    dc.endpoint = &Endpoint{
-        Id:          generateId(),
-        Summary:     summary,
-        Description: description}
-    dc.endpoint.AddTag(tag)
+func (dc *DocContext) NewEndpoint(version string, group string, summary string, description string) {
+    if version == "" {
+        version = "v1"
+    }
+    summary = strings.TrimSpace(summary)
+    description = strings.TrimSpace(description)
+    dc.endpoint = createEndpoint(group, version, summary, description)
 }
 
-func (dc *DocContext) GetEndpoint() *Endpoint {
+func (dc *DocContext) GetEndpoint() *DocEndpoint {
     return dc.endpoint
 }
 
@@ -102,14 +106,16 @@ func (dc *DocContext) CollectExamplesMode() bool {
     return dc.mode == CollectEndpointUsageExample || dc.mode == CollectEndpointDescriptionAndUsage
 }
 
-func (dc *DocContext) CollectAll(exampleSummary string) {
+func (dc *DocContext) CollectAll(summary string, description string) {
     dc.mode = CollectEndpointDescriptionAndUsage
-    dc.usageSummary = exampleSummary
+    dc.usageSummary = summary
+    dc.usageDescription = description
 }
 
 func (dc *DocContext) StopCollecting() {
     dc.mode = CollectNothing
     dc.usageSummary = ""
+    dc.usageDescription = ""
     dc.roleName = ""
 }
 
@@ -147,13 +153,14 @@ func (dc *DocContext) GetAccess(method string, path string, roleName string) int
     }
 }
 
-func (dc *DocContext) SaveEndpointDocumentation() {
+func (dc *DocContext) SaveEndpoint() {
     if dc.endpoint != nil {
         dc.endpoints = append(dc.endpoints, *dc.endpoint)
+        dc.endpoint = nil
     }
 }
 
-func (dc *DocContext) GetEndpoints() []Endpoint {
+func (dc *DocContext) GetEndpoints() []DocEndpoint {
     return dc.endpoints
 }
 

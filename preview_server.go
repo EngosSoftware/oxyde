@@ -74,11 +74,12 @@ func runPreviewServer(model *PreviewModel, port int) {
         return
     }
 
-    http.HandleFunc("/", index)
-    http.HandleFunc("/style.css", styleCss)
-    http.HandleFunc("/endpoint-details", endpointDetails)
-    fmt.Printf(">> API preview server started and listening on port: %d\n", port)
-    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+    mux := http.NewServeMux()
+    mux.HandleFunc("/", index)
+    mux.HandleFunc("/style.css", styleCss)
+    mux.HandleFunc("/endpoint-details", endpointDetails)
+    fmt.Printf("Documentation server started and listening on port: %d\n", port)
+    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux))
 }
 
 func preparePageTemplate() *template.Template {

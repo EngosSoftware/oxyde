@@ -129,7 +129,7 @@ func TestSimpleTypes(t *testing.T) {
         Salary  int64    `json:"salary" api:"Salary."`
         Married bool     `json:"married" api:"Is married?"`
         Height  float64  `json:"height" api:"Height."`
-        Tags    []string `json:"tags" api:"Tags."`
+        Tags    []string `json:"tags" api:"Group."`
     }
     d := Data{}
     ParseType(d)
@@ -151,7 +151,7 @@ func TestStructures(t *testing.T) {
         Salary  int64    `json:"salary" api:"Salary."`
         Married *bool    `json:"married" api:"Is married?"`
         Height  float64  `json:"height" api:"Height."`
-        Tags    []string `json:"tags" api:"Tags."`
+        Tags    []string `json:"tags" api:"Group."`
         Children []Child `json:"children" api:"Children."`
         Address *Address `json:"address" api:"Address details."`
     }

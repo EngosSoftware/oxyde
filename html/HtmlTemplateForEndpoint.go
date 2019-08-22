@@ -28,6 +28,7 @@ const EndpointTemplate = `
 <div class="endpoint-details-summary">{{.Summary}}</div>
 <div class="endpoint-details-method details-http-method-{{.MethodLo}}">{{.MethodUp}}</div>
 <div class="endpoint-details-uri">{{.UrlPath}}</div>
+<div class="endpoint-details-description">{{.Description}}</div>
 
 <div class="fields-container-title">Headers</div>
 <div class="parameters-description">
