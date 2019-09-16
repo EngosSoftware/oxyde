@@ -66,23 +66,26 @@ func createEndpoint(group string, version string, summary string, description st
 }
 
 type Field struct {
-    FieldName   string  // Field name in struct or in array.
+    FieldName   string  // Field name in struct or array.
+    FieldType   string  // Type of field in struct or array.
     JsonName    string  // Name of the field in JSON object.
     JsonType    string  // Type of the field in JSON object.
     Mandatory   bool    // Flag indicating if field is mandatory in JSON object.
+    Recursive   bool    // Flag indicating if this field is used recursively.
     Description string  // Description of the field.
     Children    []Field // List of child fields (may be empty).
 }
 
 func ParseType(i interface{}) []Field {
     typ := reflect.TypeOf(i)
-    return ParseFields(typ)
+    return ParseFields(typ, "")
 }
 
-func ParseFields(typ reflect.Type) []Field {
+func ParseFields(typ reflect.Type, parentType string) []Field {
+    typeName := typ.Name()
     switch typ.Kind() {
     case reflect.Ptr:
-        return ParseFields(typ.Elem())
+        return ParseFields(typ.Elem(), "")
     case reflect.Struct:
         fields := make([]Field, 0)
         for i := 0; i < typ.NumField(); i++ {
@@ -91,9 +94,17 @@ func ParseFields(typ reflect.Type) []Field {
             field := createField(childType, childField)
             switch field.JsonType {
             case "object":
-                field.Children = append(field.Children, ParseFields(childType)...)
+                if parentType != typeName || typeName != field.FieldType {
+                    field.Children = append(field.Children, ParseFields(childType, typeName)...)
+                } else {
+                    field.Recursive = true
+                }
             case "array":
-                field.Children = append(field.Children, ParseFields(childType.Elem())...)
+                if parentType != typeName || typeName != field.FieldType {
+                    field.Children = append(field.Children, ParseFields(childType.Elem(), typeName)...)
+                } else {
+                    field.Recursive = true
+                }
             }
             fields = append(fields, field)
         }
@@ -102,22 +113,22 @@ func ParseFields(typ reflect.Type) []Field {
     return []Field{}
 }
 
-func jsonType(typ reflect.Type) string {
+func jsonType(typ reflect.Type) (string, string) {
     switch typ.Kind() {
     case reflect.Ptr:
         return jsonType(typ.Elem())
     case reflect.Struct:
-        return "object"
+        return "object", typ.Name()
     case reflect.Slice:
-        return "array"
+        return "array", typ.Elem().Name()
     case reflect.String:
-        return "string"
+        return "string", typ.Name()
     case reflect.Bool:
-        return "boolean"
+        return "boolean", typ.Name()
     case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
         reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
         reflect.Float32, reflect.Float64:
-        return "number"
+        return "number", typ.Name()
     default:
         panic(errors.New("unsupported type: " + typ.Kind().String()))
     }
@@ -125,16 +136,18 @@ func jsonType(typ reflect.Type) string {
 
 func createField(typ reflect.Type, structField reflect.StructField) Field {
     fieldName := structField.Name
-    jsonType := jsonType(typ)
+    jsonType, fieldType := jsonType(typ)
     jsonName := structField.Tag.Get(JsonTagName)
     apiTagContent := structField.Tag.Get(ApiTagName)
     mandatory := !strings.HasPrefix(apiTagContent, OptionalPrefix)
     apiTagContent = strings.TrimPrefix(apiTagContent, OptionalPrefix)
     return Field{
         FieldName:   fieldName,
+        FieldType:   fieldType,
         JsonName:    jsonName,
         JsonType:    jsonType,
         Mandatory:   mandatory,
+        Recursive:   false,
         Description: apiTagContent,
         Children:    make([]Field, 0)}
 }

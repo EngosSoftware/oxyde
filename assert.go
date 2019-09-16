@@ -114,6 +114,15 @@ func AssertEqualIntNullable(expected *int, actual *int) {
     }
 }
 
+func AssertEqualInt64Nullable(expected *int64, actual *int64) {
+    if !equalInt64Nullable(expected, actual) {
+        if expected != nil && actual != nil {
+            displayAssertionError(*expected, *actual)
+        }
+        displayAssertionError(expected, actual)
+    }
+}
+
 func AssertEqualFloat64(expected float64, actual float64) {
     if !equalFloat64(expected, actual) {
         displayAssertionError(expected, actual)
@@ -156,6 +165,22 @@ func equalInt(expected int, actual int) bool {
 func equalIntNullable(expected *int, actual *int) bool {
     if expected != nil && actual != nil {
         return equalInt(*expected, *actual)
+    }
+    if expected != nil || actual != nil {
+        return false
+    }
+    return true
+}
+
+// Function equalInt64 checks if two int64 values are equal.
+func equalInt64(expected int64, actual int64) bool {
+    return expected == actual
+}
+
+// Function equalInt64Nullable checks if two pointers to int64 values are equal.
+func equalInt64Nullable(expected *int64, actual *int64) bool {
+    if expected != nil && actual != nil {
+        return equalInt64(*expected, *actual)
     }
     if expected != nil || actual != nil {
         return false

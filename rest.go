@@ -165,8 +165,17 @@ func httpCall(
         req, err = http.NewRequest(method, uri, nil)
         panicOnError(err)
     } else {
-        requestBody, err = json.Marshal(body)
-        panicOnError(err)
+        bodyFields := ParseType(body)
+        if len(bodyFields) == 1 && bodyFields[0].JsonName == "-" && bodyFields[0].JsonType == "string" {
+            field := reflect.ValueOf(body).Elem().Field(0)
+            if field.Kind() == reflect.Ptr {
+                field = reflect.Indirect(field)
+            }
+            requestBody = []byte(field.String())
+        } else {
+            requestBody, err = json.Marshal(body)
+            panicOnError(err)
+        }
         displayRequestPayload(c, requestBody)
         req, err = http.NewRequest(method, uri, bytes.NewReader(requestBody))
         panicOnError(err)
