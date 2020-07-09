@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2017-2019 Dariusz Depta Engos Software
+ * Copyright (c) 2017-2020 Engos Software
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -66,7 +66,7 @@ func CreateContext() *Context {
 
 // Function HttpGETString executes HTTP GET request and returns simple text result (not JSON string!)
 func HttpGETString(
-    ctx Context,
+    ctx *Context,
     dtx *DocContext,
     path string,
     params interface{},
@@ -92,77 +92,77 @@ func HttpGETString(
 
 // Function HttpGET executes HTTP GET request and returns JSON result.
 func HttpGET(
-    c Context,           /* Request context. */
-    dc *DocContext,      /* Documentation context. */
+    ctx *Context,        /* Request context. */
+    dtx *DocContext,     /* Documentation context. */
     path string,         /* Request path. */
     headers interface{}, /* Request headers. */
     params interface{},  /* Request parameters. */
     result interface{},  /* Response payload (response body). */
     status int           /* Expected HTTP status code. */) {
     var responseBody []byte
-    requestPath, err := prepareRequestPath(path, c.Version, params)
-    uri := prepareUri(c, requestPath)
-    displayRequestDetails(c, httpGET, uri)
+    requestPath, err := prepareRequestPath(path, ctx.Version, params)
+    uri := prepareUri(ctx, requestPath)
+    displayRequestDetails(ctx, httpGET, uri)
     req, err := http.NewRequest(httpGET, uri, nil)
     panicOnError(err)
-    setRequestHeaders(c, req, headers)
+    setRequestHeaders(ctx, req, headers)
     client := http.Client{}
     res, err := client.Do(req)
     panicOnError(err)
-    panicOnUnexpectedStatusCode(c, status, res)
+    panicOnUnexpectedStatusCode(ctx, status, res)
     if nilValue(result) {
         responseBody = nil
     } else {
-        responseBody = readResponseBody(c, res)
+        responseBody = readResponseBody(ctx, res)
         err = json.Unmarshal(responseBody, result)
         panicOnError(err)
     }
-    collectDocumentationData(c, dc, res, httpGET, path, requestPath, headers, params, nil, result, nil, responseBody)
+    collectDocumentationData(ctx, dtx, res, httpGET, path, requestPath, headers, params, nil, result, nil, responseBody)
 }
 
 // Function HttpPOST executes HTTP POST request.
 func HttpPOST(
-    c Context,           /* Request context. */
-    dc *DocContext,      /* Documentation context. */
+    ctx *Context,        /* Request context. */
+    dtx *DocContext,     /* Documentation context. */
     path string,         /* Request path. */
     headers interface{}, /* Request headers. */
     params interface{},  /* Request parameters. */
     body interface{},    /* Request payload (request body). */
     result interface{},  /* Response payload (response body). */
     status int           /* Expected HTTP status code. */) {
-    httpCall(c, dc, httpPOST, path, headers, params, body, result, status)
+    httpCall(ctx, dtx, httpPOST, path, headers, params, body, result, status)
 }
 
 // Function HttpPUT executes HTTP PUT request.
 func HttpPUT(
-    c Context,           /* Request context. */
-    dc *DocContext,      /* Documentation context. */
+    ctx *Context,        /* Request context. */
+    dtx *DocContext,     /* Documentation context. */
     path string,         /* Request path. */
     headers interface{}, /* Request headers. */
     params interface{},  /* Request parameters. */
     body interface{},    /* Request payload (request body). */
     result interface{},  /* Response payload (response body). */
     status int           /* Expected HTTP status code. */) {
-    httpCall(c, dc, httpPUT, path, headers, params, body, result, status)
+    httpCall(ctx, dtx, httpPUT, path, headers, params, body, result, status)
 }
 
 // Function HttpDELETE executes HTTP DELETE request.
 func HttpDELETE(
-    c Context,           /* Request context. */
-    dc *DocContext,      /* Documentation context. */
+    ctx *Context,        /* Request context. */
+    dtx *DocContext,     /* Documentation context. */
     path string,         /* Request path. */
     headers interface{}, /* Request headers. */
     params interface{},  /* Request parameters. */
     body interface{},    /* Request payload (request body). */
     result interface{},  /* Response payload (response body). */
     status int           /* Expected HTTP status code. */) {
-    httpCall(c, dc, httpDELETE, path, headers, params, body, result, status)
+    httpCall(ctx, dtx, httpDELETE, path, headers, params, body, result, status)
 }
 
 // Function httpCall executes HTTP request with specified HTTP method and parameters.
 func httpCall(
-    c Context,
-    dc *DocContext,
+    ctx *Context,
+    dtx *DocContext,
     method string,
     path string,
     headers interface{},
@@ -174,13 +174,13 @@ func httpCall(
     var requestBody []byte
     var responseBody []byte
     var err error
-    requestPath, err := prepareRequestPath(path, c.Version, params)
+    requestPath, err := prepareRequestPath(path, ctx.Version, params)
     panicOnError(err)
-    uri := prepareUri(c, requestPath)
-    displayRequestDetails(c, method, uri)
+    uri := prepareUri(ctx, requestPath)
+    displayRequestDetails(ctx, method, uri)
     if nilValue(body) {
         requestBody = nil
-        displayRequestPayload(c, nil)
+        displayRequestPayload(ctx, nil)
         req, err = http.NewRequest(method, uri, nil)
         panicOnError(err)
     } else {
@@ -195,28 +195,28 @@ func httpCall(
             requestBody, err = json.Marshal(body)
             panicOnError(err)
         }
-        displayRequestPayload(c, requestBody)
+        displayRequestPayload(ctx, requestBody)
         req, err = http.NewRequest(method, uri, bytes.NewReader(requestBody))
         panicOnError(err)
         req.Header.Add("Content-Type", "application/json")
     }
-    setRequestHeaders(c, req, headers)
+    setRequestHeaders(ctx, req, headers)
     client := http.Client{}
     res, err := client.Do(req)
     panicOnError(err)
-    panicOnUnexpectedStatusCode(c, status, res)
+    panicOnUnexpectedStatusCode(ctx, status, res)
     if nilValue(result) {
         responseBody = nil
     } else {
-        responseBody = readResponseBody(c, res)
+        responseBody = readResponseBody(ctx, res)
         err = json.Unmarshal(responseBody, result)
         panicOnError(err)
     }
-    collectDocumentationData(c, dc, res, method, path, requestPath, headers, params, body, result, requestBody, responseBody)
+    collectDocumentationData(ctx, dtx, res, method, path, requestPath, headers, params, body, result, requestBody, responseBody)
 }
 
 func collectDocumentationData(
-    c Context,
+    ctx *Context,
     dc *DocContext,
     res *http.Response,
     method string,
@@ -230,8 +230,8 @@ func collectDocumentationData(
     responseBody []byte) {
     if endpoint := dc.GetEndpoint(); endpoint != nil && dc.CollectDescriptionMode() {
         endpoint.Method = method
-        endpoint.RootPath = c.Url
-        endpoint.RequestPath = preparePath(path, c.Version)
+        endpoint.RootPath = ctx.Url
+        endpoint.RequestPath = preparePath(path, ctx.Version)
         if nilValue(headers) {
             endpoint.Headers = nil
         } else {
@@ -263,13 +263,13 @@ func collectDocumentationData(
             Description:  dc.GetExampleDescription(),
             Method:       method,
             Headers:      parseHeaders(headers),
-            Url:          c.Url + requestPath,
+            Url:          ctx.Url + requestPath,
             RequestBody:  prettyPrint(requestBody),
             ResponseBody: prettyPrint(responseBody),
             StatusCode:   res.StatusCode}
         endpoint.Usages = append(endpoint.Usages, usage)
     }
-    dc.SaveRole(method, preparePath(path, c.Version), res.StatusCode)
+    dc.SaveRole(method, preparePath(path, ctx.Version), res.StatusCode)
     dc.StopCollecting()
 }
 
@@ -320,40 +320,40 @@ func prepareRequestPath(path string, version string, params interface{}) (string
 }
 
 // Function setRequestHeaders adds headers to the request.
-func setRequestHeaders(c Context, req *http.Request, headers interface{}) {
+func setRequestHeaders(ctx *Context, req *http.Request, headers interface{}) {
     for name, value := range parseHeaders(headers) {
         req.Header.Add(name, value)
     }
 }
 
 // Function readResponseBody reads and returns the body of HTTP response.
-func readResponseBody(c Context, res *http.Response) []byte {
+func readResponseBody(ctx *Context, res *http.Response) []byte {
     body, err := ioutil.ReadAll(res.Body)
     panicOnError(err)
     err = res.Body.Close()
     panicOnError(err)
-    displayResponseBody(c, body)
+    displayResponseBody(ctx, body)
     return body
 }
 
 // Function prepareUri concatenates URL defined in context with
 // request path and returns full URI of HTTP request.
-func prepareUri(c Context, path string) string {
-    return c.Url + path
+func prepareUri(ctx *Context, path string) string {
+    return ctx.Url + path
 }
 
 // Function displayRequestDetails writes to standard output
 // request method and URI.
-func displayRequestDetails(c Context, method string, uri string) {
-    if c.Verbose {
+func displayRequestDetails(ctx *Context, method string, uri string) {
+    if ctx.Verbose {
         fmt.Printf("\n\n===> %s:\n%s\n", method, uri)
     }
 }
 
 // Function displayRequestPayload writes to standard output
 // pretty-printed request payload.
-func displayRequestPayload(c Context, payload []byte) {
-    if c.Verbose {
+func displayRequestPayload(ctx *Context, payload []byte) {
+    if ctx.Verbose {
         if payload == nil {
             fmt.Printf("\n===> REQUEST PAYLOAD:\n(none)\n")
         } else {
@@ -364,8 +364,8 @@ func displayRequestPayload(c Context, payload []byte) {
 
 // Function displayResponseBody writes to standard output
 // pretty-printed response body when verbose mode is on.
-func displayResponseBody(c Context, body []byte) {
-    if c.Verbose {
+func displayResponseBody(ctx *Context, body []byte) {
+    if ctx.Verbose {
         if body == nil {
             fmt.Printf("\n<=== RESPONSE BODY:\n(none)\n")
         } else {
@@ -376,14 +376,14 @@ func displayResponseBody(c Context, body []byte) {
 
 // Function panicOnUnexpectedStatusCode displays error message and panics when
 // actual HTTP response status code differs from the expected one.
-func panicOnUnexpectedStatusCode(c Context, expectedCode int, res *http.Response) {
+func panicOnUnexpectedStatusCode(ctx *Context, expectedCode int, res *http.Response) {
     // display the returned status code if the same as expected
-    if c.Verbose {
+    if ctx.Verbose {
         fmt.Printf("\n<=== STATUS:\n%d\n", res.StatusCode)
     }
     // check if the expected status code is the same as returned by server
     if res.StatusCode != expectedCode {
-        readResponseBody(c, res)
+        readResponseBody(ctx, res)
         separator := makeText("-", 120)
         fmt.Printf("\n\n%s\n>     ERROR: unexpected status code\n>  Expected: %d\n>    Actual: %d\n%s\n\n",
             separator,

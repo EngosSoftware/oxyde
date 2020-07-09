@@ -144,6 +144,10 @@ func Display2(ctx *Context) {
     DisplayLevel(ctx, 4)
 }
 
+func Ok() {
+    fmt.Println("OK")
+}
+
 func DisplayLevel(ctx *Context, level int) {
     text := strings.TrimSpace(FunctionName(level))
     newline := "\n"
