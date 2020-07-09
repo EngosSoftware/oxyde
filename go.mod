@@ -1,3 +1,3 @@
 module github.com/EngosSoftware/oxyde
 
-go 1.12
+go 1.14
