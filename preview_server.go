@@ -27,7 +27,6 @@ package oxyde
 import (
     "bytes"
     "fmt"
-    h "github.com/EngosSoftware/oxyde/html"
     "io"
     "log"
     "net/http"
@@ -55,7 +54,7 @@ func runPreviewServer(model *PreviewModel, port int) {
 
     styleCss := func(w http.ResponseWriter, req *http.Request) {
         w.Header().Set("Content-Type", "text/css")
-        _, err := io.WriteString(w, h.StyleCss)
+        _, err := io.WriteString(w, StyleCss)
         panicOnError(err)
     }
 
@@ -83,25 +82,25 @@ func runPreviewServer(model *PreviewModel, port int) {
 }
 
 func preparePageTemplate() *template.Template {
-    t, err := template.New("pageTemplate").Parse(h.PageTemplate)
+    t, err := template.New("pageTemplate").Parse(PageTemplate)
     panicOnError(err)
     return t
 }
 
 func prepareIndexTemplate() *template.Template {
-    t, err := template.New("indexTemplate").Parse(h.IndexTemplate)
+    t, err := template.New("indexTemplate").Parse(IndexTemplate)
     panicOnError(err)
     return t
 }
 
 func prepareEndpointTemplate() *template.Template {
-    t, err := template.New("endpointTemplate").Parse(h.EndpointTemplate)
+    t, err := template.New("endpointTemplate").Parse(EndpointTemplate)
     panicOnError(err)
     return t
 }
 
 func prepareErrorTemplate() *template.Template {
-    t, err := template.New("errorTemplate").Parse(h.ErrorTemplate)
+    t, err := template.New("errorTemplate").Parse(ErrorTemplate)
     panicOnError(err)
     return t
 }
