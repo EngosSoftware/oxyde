@@ -24,7 +24,9 @@
  
 package oxyde
 
-import "testing"
+import (
+    "testing"
+)
 
 func TestEqualStrings(t *testing.T) {
     if !equalString("string", "string") {
