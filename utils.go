@@ -38,15 +38,18 @@ import (
 )
 
 const (
-    ApiTagName         = "api"          // Name of the tag in which documentation details are stored.
-    JsonTagName        = "json"         // Name of the tag in which JSON details are stored.
-    VersionPlaceholder = "{apiVersion}" // Placeholder for API version number in request path.
-    OptionalPrefix     = "?"            // Prefix used to mark the field as optional.
+    ApiTagName              = "api"          // Name of the tag in which documentation details are stored.
+    JsonTagName             = "json"         // Name of the tag in which JSON details are stored.
+    VersionPlaceholder      = "{apiVersion}" // Placeholder for API version number in request path.
+    OptionalPrefix          = "?"            // Prefix used to mark the field as optional.
+    TestSuitePrefix         = "ts_"          // Prefix used to name the function that runs the test suite.
+    TestCasePrefix          = "tc_"          // Prefix used to name the function that runs the test case.
+    TestDocumentationPrefix = "td_"          // Prefix used to name the function that documents the API.
 )
 
 var (
     reCamelBoundary = regexp.MustCompile("([a-z])([A-Z])")
-    reFunctionName = regexp.MustCompile(`\.([a-zA-Z_0-9]+)\(`)
+    reFunctionName  = regexp.MustCompile(`\.([a-zA-Z_0-9]+)\(`)
 )
 
 // Function makeText creates a string that contains repeated text.
@@ -133,8 +136,32 @@ func brexit() {
     os.Exit(-1)
 }
 
+func Display(ctx *Context) {
+    DisplayLevel(ctx, 3)
+}
+
+func Display2(ctx *Context) {
+    DisplayLevel(ctx, 4)
+}
+
+func DisplayLevel(ctx *Context, level int) {
+    text := strings.TrimSpace(FunctionName(level))
+    newline := "\n"
+    if strings.HasPrefix(text, TestSuitePrefix) {
+        text = " >> " + text
+    } else if strings.HasPrefix(text, TestDocumentationPrefix) {
+        text = "  > " + text
+    } else if strings.HasPrefix(text, TestCasePrefix) {
+        text = "    - " + text + " [" + ctx.UserName + "]"
+        newline = ""
+    } else {
+        text = ">>> " + text
+    }
+    fmt.Printf("%-120s%-5s%s", text, ctx.Version, newline)
+}
+
 func FunctionName(level int) string {
-    b := make([]byte, 100000)
+    b := make([]byte, 8192)
     runtime.Stack(b, false)
     scanner := bufio.NewScanner(bytes.NewBuffer(b))
     index := 0
