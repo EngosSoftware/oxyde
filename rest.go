@@ -43,28 +43,47 @@ const (
     httpDELETE = "DELETE"
 )
 
-// Interface for request context. Instances of this interface provide additional
-// data required to successfully execute HTTP requests.
-type Context interface {
-    GetUrl() string     // Returns URL of the endpoint to be called.
-    GetVerbose() bool   // Returns flag indicating if executing process should be more verbose.
-    GetVersion() string // Returns API version to be replaced in URL.
+// Request context. Provides additional data required to successfully execute HTTP requests.
+type Context struct {
+    Url      string // The URL of tested endpoint.
+    Token    string // Authorization token.
+    UserName string // Name of the authorized user.
+    RoleName string // Name of the current role of the authorized user.
+    Verbose  bool   // Flag indicating if executing process should be more verbose.
+    Version  string // API version to be used in endpoint URL.
+}
+
+func CreateContext() *Context {
+    return &Context{
+        Url:      "",
+        Token:    "",
+        UserName: "",
+        RoleName: "",
+        Verbose:  false,
+        Version:  "v1",
+    }
 }
 
 // Function HttpGETString executes HTTP GET request and returns simple text result (not JSON string!)
-func HttpGETString(c Context, dc *DocContext, path string, params interface{}, result interface{}, status int) {
-    requestPath, err := prepareRequestPath(path, c.GetVersion(), params)
-    uri := prepareUri(c, requestPath)
-    displayRequestDetails(c, httpGET, uri)
+func HttpGETString(
+    ctx Context,
+    dtx *DocContext,
+    path string,
+    params interface{},
+    result interface{},
+    status int) {
+    requestPath, err := prepareRequestPath(path, ctx.Version, params)
+    uri := prepareUri(ctx, requestPath)
+    displayRequestDetails(ctx, httpGET, uri)
     req, err := http.NewRequest(httpGET, uri, nil)
     panicOnError(err)
-    setRequestHeaders(c, req, nil)
+    setRequestHeaders(ctx, req, nil)
     client := http.Client{}
     res, err := client.Do(req)
     panicOnError(err)
-    panicOnUnexpectedStatusCode(c, status, res)
-    responseBody := readResponseBody(c, res)
-    collectDocumentationData(c, dc, res, httpGET, path, requestPath, nil, params, nil, result, nil, responseBody)
+    panicOnUnexpectedStatusCode(ctx, status, res)
+    responseBody := readResponseBody(ctx, res)
+    collectDocumentationData(ctx, dtx, res, httpGET, path, requestPath, nil, params, nil, result, nil, responseBody)
     resultFields := ParseType(result)
     if len(resultFields) == 1 && resultFields[0].JsonName == "-" && resultFields[0].JsonType == "string" {
         reflect.ValueOf(result).Elem().Field(0).SetString(string(responseBody))
@@ -81,7 +100,7 @@ func HttpGET(
     result interface{},  /* Response payload (response body). */
     status int           /* Expected HTTP status code. */) {
     var responseBody []byte
-    requestPath, err := prepareRequestPath(path, c.GetVersion(), params)
+    requestPath, err := prepareRequestPath(path, c.Version, params)
     uri := prepareUri(c, requestPath)
     displayRequestDetails(c, httpGET, uri)
     req, err := http.NewRequest(httpGET, uri, nil)
@@ -155,7 +174,7 @@ func httpCall(
     var requestBody []byte
     var responseBody []byte
     var err error
-    requestPath, err := prepareRequestPath(path, c.GetVersion(), params)
+    requestPath, err := prepareRequestPath(path, c.Version, params)
     panicOnError(err)
     uri := prepareUri(c, requestPath)
     displayRequestDetails(c, method, uri)
@@ -211,8 +230,8 @@ func collectDocumentationData(
     responseBody []byte) {
     if endpoint := dc.GetEndpoint(); endpoint != nil && dc.CollectDescriptionMode() {
         endpoint.Method = method
-        endpoint.RootPath = c.GetUrl()
-        endpoint.RequestPath = preparePath(path, c.GetVersion())
+        endpoint.RootPath = c.Url
+        endpoint.RequestPath = preparePath(path, c.Version)
         if nilValue(headers) {
             endpoint.Headers = nil
         } else {
@@ -244,13 +263,13 @@ func collectDocumentationData(
             Description:  dc.GetExampleDescription(),
             Method:       method,
             Headers:      parseHeaders(headers),
-            Url:          c.GetUrl() + requestPath,
+            Url:          c.Url + requestPath,
             RequestBody:  prettyPrint(requestBody),
             ResponseBody: prettyPrint(responseBody),
             StatusCode:   res.StatusCode}
         endpoint.Usages = append(endpoint.Usages, usage)
     }
-    dc.SaveRole(method, preparePath(path, c.GetVersion()), res.StatusCode)
+    dc.SaveRole(method, preparePath(path, c.Version), res.StatusCode)
     dc.StopCollecting()
 }
 
@@ -320,13 +339,13 @@ func readResponseBody(c Context, res *http.Response) []byte {
 // Function prepareUri concatenates URL defined in context with
 // request path and returns full URI of HTTP request.
 func prepareUri(c Context, path string) string {
-    return c.GetUrl() + path
+    return c.Url + path
 }
 
 // Function displayRequestDetails writes to standard output
 // request method and URI.
 func displayRequestDetails(c Context, method string, uri string) {
-    if c.GetVerbose() {
+    if c.Verbose {
         fmt.Printf("\n\n===> %s:\n%s\n", method, uri)
     }
 }
@@ -334,7 +353,7 @@ func displayRequestDetails(c Context, method string, uri string) {
 // Function displayRequestPayload writes to standard output
 // pretty-printed request payload.
 func displayRequestPayload(c Context, payload []byte) {
-    if c.GetVerbose() {
+    if c.Verbose {
         if payload == nil {
             fmt.Printf("\n===> REQUEST PAYLOAD:\n(none)\n")
         } else {
@@ -346,7 +365,7 @@ func displayRequestPayload(c Context, payload []byte) {
 // Function displayResponseBody writes to standard output
 // pretty-printed response body when verbose mode is on.
 func displayResponseBody(c Context, body []byte) {
-    if c.GetVerbose() {
+    if c.Verbose {
         if body == nil {
             fmt.Printf("\n<=== RESPONSE BODY:\n(none)\n")
         } else {
@@ -359,7 +378,7 @@ func displayResponseBody(c Context, body []byte) {
 // actual HTTP response status code differs from the expected one.
 func panicOnUnexpectedStatusCode(c Context, expectedCode int, res *http.Response) {
     // display the returned status code if the same as expected
-    if c.GetVerbose() {
+    if c.Verbose {
         fmt.Printf("\n<=== STATUS:\n%d\n", res.StatusCode)
     }
     // check if the expected status code is the same as returned by server
