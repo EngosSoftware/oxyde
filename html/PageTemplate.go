@@ -1,4 +1,4 @@
-package oxyde
+package html
 
 const PageTemplate = `
 <!DOCTYPE html>

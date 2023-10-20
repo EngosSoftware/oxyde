@@ -1,8 +1,12 @@
-package oxyde
+package server
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/wisbery/oxyde/common"
+	d "github.com/wisbery/oxyde/doc"
+	h "github.com/wisbery/oxyde/html"
+	m "github.com/wisbery/oxyde/model"
 	"io"
 	"log"
 	"net/http"
@@ -16,12 +20,12 @@ var (
 	errorTemplate    = prepareErrorTemplate()
 )
 
-func StartPreview(dc *DocContext) {
-	model := CreatePreviewModel(dc)
+func StartPreview(dc *d.Context) {
+	model := m.CreateModel(dc)
 	runPreviewServer(model, 16100)
 }
 
-func runPreviewServer(model *PreviewModel, port int) {
+func runPreviewServer(model *m.Model, port int) {
 
 	index := func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -30,8 +34,8 @@ func runPreviewServer(model *PreviewModel, port int) {
 
 	styleCss := func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/css")
-		_, err := io.WriteString(w, StyleCss)
-		panicOnError(err)
+		_, err := io.WriteString(w, h.StyleCss)
+		common.PanicOnError(err)
 	}
 
 	endpointDetails := func(w http.ResponseWriter, req *http.Request) {
@@ -49,35 +53,34 @@ func runPreviewServer(model *PreviewModel, port int) {
 		return
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", index)
-	mux.HandleFunc("/style.css", styleCss)
-	mux.HandleFunc("/endpoint-details", endpointDetails)
-	fmt.Printf("Documentation server started and listening on port: %d\n", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux))
+	http.HandleFunc("/", index)
+	http.HandleFunc("/style.css", styleCss)
+	http.HandleFunc("/endpoint-details", endpointDetails)
+	fmt.Printf(">> API preview server started and listening on port: %d\n", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
 func preparePageTemplate() *template.Template {
-	t, err := template.New("pageTemplate").Parse(PageTemplate)
-	panicOnError(err)
+	t, err := template.New("pageTemplate").Parse(h.PageTemplate)
+	common.PanicOnError(err)
 	return t
 }
 
 func prepareIndexTemplate() *template.Template {
-	t, err := template.New("indexTemplate").Parse(IndexTemplate)
-	panicOnError(err)
+	t, err := template.New("indexTemplate").Parse(h.IndexTemplate)
+	common.PanicOnError(err)
 	return t
 }
 
 func prepareEndpointTemplate() *template.Template {
-	t, err := template.New("endpointTemplate").Parse(EndpointTemplate)
-	panicOnError(err)
+	t, err := template.New("endpointTemplate").Parse(h.EndpointTemplate)
+	common.PanicOnError(err)
 	return t
 }
 
 func prepareErrorTemplate() *template.Template {
-	t, err := template.New("errorTemplate").Parse(ErrorTemplate)
-	panicOnError(err)
+	t, err := template.New("errorTemplate").Parse(h.ErrorTemplate)
+	common.PanicOnError(err)
 	return t
 }
 
@@ -85,7 +88,7 @@ func wrapInPage(w http.ResponseWriter, t *template.Template, data interface{}) {
 	var out bytes.Buffer
 	outWriter := io.Writer(&out)
 	err := t.Execute(outWriter, data)
-	panicOnError(err)
+	common.PanicOnError(err)
 	err = pageTemplate.Execute(w, out.String())
-	panicOnError(err)
+	common.PanicOnError(err)
 }

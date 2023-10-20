@@ -1,3 +1,3 @@
-package oxyde
+package html
 
 const ErrorTemplate = `ERROR: {{.}}`

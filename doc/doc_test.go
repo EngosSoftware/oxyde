@@ -1,4 +1,4 @@
-package oxyde
+package doc
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ type TestLoginParams struct {
 
 func TestSimpleJSONObject(t *testing.T) {
 
-	fields := ParseType(TestLoginParams{})
+	fields := ParseObject(TestLoginParams{})
 	if len(fields) != 2 {
 		t.Error("expected two fields in object")
 	}
@@ -93,7 +93,7 @@ func TestA(t *testing.T) {
 		SubDetails: nil,
 		Tags:       nil}
 	fmt.Println("---d")
-	ParseType(s)
+	ParseObject(s)
 	// Traverse(&s)
 	fmt.Println()
 }
@@ -105,10 +105,11 @@ func TestSimpleTypes(t *testing.T) {
 		Salary  int64    `json:"salary" api:"Salary."`
 		Married bool     `json:"married" api:"Is married?"`
 		Height  float64  `json:"height" api:"Height."`
-		Tags    []string `json:"tags" api:"Group."`
+		Tags    []string `json:"tags" api:"Tags."`
 	}
 	d := Data{}
-	ParseType(d)
+	fields := ParseObject(d)
+	PrintFields(fields, " ", 0)
 	fmt.Println()
 }
 
@@ -127,11 +128,12 @@ func TestStructures(t *testing.T) {
 		Salary   int64    `json:"salary" api:"Salary."`
 		Married  *bool    `json:"married" api:"Is married?"`
 		Height   float64  `json:"height" api:"Height."`
-		Tags     []string `json:"tags" api:"Group."`
+		Tags     []string `json:"tags" api:"Tags."`
 		Children []Child  `json:"children" api:"Children."`
 		Address  *Address `json:"address" api:"Address details."`
 	}
 	d := &Data{}
-	ParseType(d)
+	fields := ParseObject(d)
+	PrintFields(fields, "   ", 0)
 	fmt.Println()
 }

@@ -1,4 +1,4 @@
-package oxyde
+package html
 
 const StyleCss = `
 body {
@@ -109,15 +109,6 @@ pre {
   font-weight: bold;
   font-size: 1.5em;
   margin: 10px 0 10px 0;
-}
-
-.endpoint-details-description {
-  font-weight: normal;
-  font-size: 1.2em;
-  margin: 10px 0 10px 0;
-  padding: 10px 0 10px 0;
-  border-bottom: solid 1px gray;
-  width: 70%;
 }
 
 .fields-container-title {
@@ -258,23 +249,6 @@ pre {
   color: black;
   margin-bottom: 8px;
   max-width: 1000px;
-}
-
-.example-header-container {
-  display: flex; 
-  flex-direction: row;
-  margin-bottom: 8px;
-}
-
-.example-header-name {
-  margin-right: 10px;
-  padding: 2px 8px 3px 8px;
-  color: white;
-  background-color: gray;
-  border-radius: 10px;
-}
-
-.example-header-value {
 }
 
 .example-request {
