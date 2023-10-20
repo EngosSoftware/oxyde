@@ -50,7 +50,7 @@ func PanicOnError(err error) {
 	}
 }
 
-// Function GenerateId generated unique identifier in form of UUID string.
+// GenerateId returns unique identifier as UUID string.
 func GenerateId() string {
 	id, err := uuid.NewRandom()
 	PanicOnError(err)
@@ -79,9 +79,9 @@ func ValueOfValue(value interface{}) reflect.Value {
 	return reflect.ValueOf(value)
 }
 
-// Function BrExit breaks the execution of test and displays stack trace.
-// After breaking the execution flow, application returns exit code -1
-// that can be utilized by test automation tools.
+// BrExit breaks the execution of the test and displays corresponding stack trace.
+// After breaking the execution flow, testing application returns exit code 1,
+// which can be utilized by test automation tools.
 func BrExit() {
 	fmt.Printf("Stack trace:\n------------\n")
 	reDeepCalls := regexp.MustCompile(`(^goroutine[^:]*:$)|(^.*/oxyde/.*$)`)
@@ -99,5 +99,5 @@ func BrExit() {
 		line = reFuncOffset.ReplaceAllString(line, "")
 		fmt.Println(line)
 	}
-	os.Exit(-1)
+	os.Exit(1)
 }
