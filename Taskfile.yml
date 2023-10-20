@@ -1,0 +1,29 @@
+version: '3'
+
+silent: true
+
+vars:
+  module: github.com/wisbery/oxyde
+
+tasks:
+
+  build:
+    desc: Build debug
+    cmds:
+      - cmd: go build {{.module}}
+
+  fmt:
+    desc: Run formatter
+    cmds:
+      - cmd: go fmt {{.module}} ./...
+
+  test:
+    desc: Run all tests
+    cmds:
+      - cmd: go test {{.module}} ./...
+
+  vet:
+    desc: Run linter
+    cmds:
+      - cmd: go vet {{.module}} ./...
+    ignore_error: true
